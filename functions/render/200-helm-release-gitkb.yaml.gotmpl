@@ -28,7 +28,7 @@ spec:
   forProvider:
     chart:
       name: gitkb-server
-      repository: oci://ghcr.io/hops-ops/charts
+      repository: https://hops-ops.github.io/gitkb-server-chart
       version: {{ $state.chartVersion | quote }}
     namespace: {{ $state.namespace }}
     wait: true

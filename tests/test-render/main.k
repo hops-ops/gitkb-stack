@@ -44,14 +44,14 @@ items = [
                     spec.forProvider = {
                         chart = {
                             name = "gitkb-server"
-                            repository = "oci://ghcr.io/hops-ops/charts"
+                            repository = "https://hops-ops.github.io/gitkb-server-chart"
                             version = "0.1.0"
                         }
                         namespace = "gitkb"
                         values = {
                             fullnameOverride = "platform-kb-gitkb-server"
                             image.repository = "ghcr.io/hops-ops/gitkb-server"
-                            image.tag = "0.2.12-1"
+                            image.tag = "v0.1.0"
                             gitkb.org = "hops-ops"
                             persistence.enabled = True
                         }

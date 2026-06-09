@@ -117,7 +117,7 @@ spec:
                     default: ghcr.io/hops-ops/gitkb-server
                   tag:
                     type: string
-                    default: 0.2.12-1
+                    default: v0.1.0
                   pullPolicy:
                     type: string
                     enum:

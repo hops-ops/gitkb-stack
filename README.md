@@ -1,6 +1,6 @@
 # gitkb-stack
 
-GitKBStack installs a GitKB sync server into Kubernetes using the Hops `gitkb-server` chart.
+GitKBStack installs a GitKB sync server into Kubernetes using the Hops `gitkb-server` chart from `https://hops-ops.github.io/gitkb-server-chart`.
 
 ## Getting Started
 

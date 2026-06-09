@@ -45,7 +45,7 @@ items = [
                         chart = {
                             name = "gitkb-server"
                             repository = "https://hops-ops.github.io/gitkb-server-chart"
-                            version = "0.2.0"
+                            version = "0.2.1"
                         }
                         namespace = "gitkb"
                         values = {

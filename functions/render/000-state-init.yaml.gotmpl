@@ -12,7 +12,7 @@
 {{- $clusterName := $spec.clusterName | default $name }}
 {{- $namespace := $spec.namespace | default "gitkb" }}
 {{- $releaseName := $spec.releaseName | default $name }}
-{{- $chartVersion := $spec.chartVersion | default "0.2.0" }}
+{{- $chartVersion := $spec.chartVersion | default "0.2.1" }}
 {{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
 
 {{- $defaultLabels := dict

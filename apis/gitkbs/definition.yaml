@@ -68,7 +68,7 @@ spec:
                 description: Helm release name for the gitkb-server chart. Defaults to metadata.name.
                 type: string
               chartVersion:
-                description: Version of the gitkb-server chart. Defaults to "0.2.0".
+                description: Version of the gitkb-server chart. Defaults to "0.2.1".
                 type: string
               gitkb:
                 description: GitKB runtime settings passed to the chart.

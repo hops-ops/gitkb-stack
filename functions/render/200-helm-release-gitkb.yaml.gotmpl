@@ -45,6 +45,7 @@ spec:
     name: {{ $state.helmProviderConfigRef.name }}
     kind: {{ $state.helmProviderConfigRef.kind }}
 
+{{- if and $state.observed.namespace.ready $state.observed.release.ready }}
 ---
 apiVersion: protection.crossplane.io/v1beta1
 kind: Usage
@@ -65,3 +66,4 @@ spec:
     kind: Release
     resourceRef:
       name: {{ $state.releaseName }}
+{{- end }}

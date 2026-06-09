@@ -4,6 +4,7 @@ PACKAGE ?= gitkb-stack
 XRD_DIR := apis/gitkbstacks
 COMPOSITION := $(XRD_DIR)/composition.yaml
 DEFINITION := $(XRD_DIR)/definition.yaml
+CONFIGURATION := $(XRD_DIR)/configuration.yaml
 EXAMPLE_DEFAULT := examples/gitkbstacks/standard.yaml
 RENDER_TESTS := $(wildcard tests/test-*)
 E2E_TESTS := $(wildcard tests/e2etest-*)
@@ -11,9 +12,14 @@ E2E_TESTS := $(wildcard tests/e2etest-*)
 clean:
 	rm -rf _output
 	rm -rf .up
+	rm -f $(CONFIGURATION)
 
 build:
 	up project build
+
+generate-configuration:
+	@set -euo pipefail; \
+	hops validate generate-configuration --path . --api-path "$(XRD_DIR)"
 
 EXAMPLES := \
     examples/gitkbstacks/minimal.yaml:: \
@@ -48,7 +54,7 @@ render\:all:
 	rm -rf "$$tmpdir"; \
 	exit $$failed
 
-validate\:all:
+validate\:all: generate-configuration
 	@tmpdir=$$(mktemp -d); \
 	pids=""; \
 	for entry in $(EXAMPLES); do \
@@ -56,6 +62,7 @@ validate\:all:
 		observed=$${entry#*::}; \
 		outfile="$$tmpdir/$$(echo $$entry | tr '/:' '__')"; \
 		( \
+			set -euo pipefail; \
 			if [ -n "$$observed" ]; then \
 				echo "=== Validating $$example with observed-resources $$observed ==="; \
 				up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example \
@@ -81,15 +88,15 @@ validate\:all:
 	rm -rf "$$tmpdir"; \
 	exit $$failed
 
-.PHONY: render validate
+.PHONY: render validate generate-configuration
 render: ; @$(MAKE) 'render:all'
-validate: ; @$(MAKE) 'validate:all'
+validate: ; @$(MAKE) generate-configuration 'validate:all'
 
 render\:%:
 	@example="examples/gitkbstacks/$*.yaml"; \
 	up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example
 
-validate\:%:
+validate\:%: generate-configuration
 	@example="examples/gitkbstacks/$*.yaml"; \
 	up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example \
 		--include-full-xr --quiet | \

@@ -37,7 +37,7 @@ This renders an unauthenticated `HTTPRoute` for `kb.<domain>` and annotates it f
 
 ## Enterprise Scale
 
-If the Gateway does not already serve a wildcard certificate for the hostname, enable the cert-manager Certificate:
+If the Gateway does not already serve a wildcard certificate for the hostname, enable the cert-manager Certificate. The Gateway listener still needs to reference the resulting Secret; this stack does not mutate the Gateway object.
 
 ```yaml
 spec:

@@ -1,5 +1,10 @@
 import models.io.upbound.dev.meta.v1alpha1 as metav1alpha1
 
+_ready_conditions = [
+    {type = "Ready", status = "True"}
+    {type = "Synced", status = "True"}
+]
+
 _base_xr = {
     apiVersion = "hops.ops.com.ai/v1alpha1"
     kind = "GitKBStack"
@@ -86,7 +91,7 @@ items = [
                         secretNamespace = "istio-ingress"
                         issuerRef = {
                             name = "letsencrypt-production"
-                        kind = "ClusterIssuer"
+                            kind = "ClusterIssuer"
                         }
                     }
                 }
@@ -121,7 +126,7 @@ items = [
                         apiVersion = "gateway.networking.k8s.io/v1"
                         kind = "HTTPRoute"
                         metadata = {
-                            name = "gitkb"
+                            name = "platform-kb"
                             namespace = "gitkb"
                             annotations = {
                                 "external-dns.alpha.kubernetes.io/hostname" = "kb.ops.com.ai"
@@ -142,6 +147,144 @@ items = [
                                     port = 8080
                                 }]
                             }]
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
+        metadata.name = "observed-ready-renders-usages-and-ready-status"
+        spec = {
+            compositionPath = "apis/gitkbstacks/composition.yaml"
+            xrdPath = "apis/gitkbstacks/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.exposure = {
+                    enabled = True
+                    domain = "ops.com.ai"
+                    gatewayRef = {
+                        name = "platform"
+                        namespace = "istio-ingress"
+                        sectionName = "https"
+                    }
+                    certificate = {
+                        enabled = True
+                        secretName = "gitkb-tls"
+                        secretNamespace = "gitkb"
+                        issuerRef = {
+                            name = "letsencrypt-production"
+                            kind = "ClusterIssuer"
+                        }
+                    }
+                }
+            }
+            observedResources = [
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata = {
+                        name = "platform-kb-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "helm.m.crossplane.io/v1beta1"
+                    kind = "Release"
+                    metadata = {
+                        name = "platform-kb"
+                        annotations = {"crossplane.io/composition-resource-name" = "helm-release-gitkb"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata = {
+                        name = "platform-kb-exposure-httproute"
+                        annotations = {"crossplane.io/composition-resource-name" = "exposure-httproute"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata = {
+                        name = "platform-kb-exposure-certificate"
+                        annotations = {"crossplane.io/composition-resource-name" = "exposure-certificate"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-gitkb-before-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-gitkb-namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-httproute-before-gitkb"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-httproute-gitkb"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-httproute-before-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-httproute-namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-certificate-before-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-certificate-namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+            ]
+            assertResources = [
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-gitkb-before-namespace"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-httproute-before-gitkb"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-httproute-before-namespace"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-certificate-before-namespace"
+                }
+                {
+                    apiVersion = "hops.ops.com.ai/v1alpha1"
+                    kind = "GitKBStack"
+                    metadata.name = "platform-kb"
+                    status = {
+                        ready = True
+                        exposure = {
+                            routeReady = True
+                            certificateReady = True
                         }
                     }
                 }

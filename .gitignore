@@ -11,3 +11,4 @@ _output/
 # E2E test credentials
 **/aws-creds
 tests/**/secrets/
+apis/**/configuration.yaml

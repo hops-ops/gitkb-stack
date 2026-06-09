@@ -27,7 +27,8 @@ spec:
     Installs GitKB into Kubernetes through the `gitkb-server` Helm chart.
     The stack owns namespace creation, chart installation, optional Gateway
     API HTTPRoute exposure, optional cert-manager Certificate provisioning,
-    and ExternalDNS annotations.
+    and ExternalDNS annotations. When the stack provisions a certificate, the
+    Gateway owner must configure the listener to reference the generated Secret.
 
     This first exposure pass is intentionally unauthenticated. Use it only
     on internal networks or behind a trusted Gateway until the OIDC policy

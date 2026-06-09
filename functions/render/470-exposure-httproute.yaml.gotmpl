@@ -23,7 +23,7 @@ spec:
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: gitkb
+        name: {{ $state.releaseName }}
         namespace: {{ $state.namespace }}
         labels: {{ $state.labels | toJson }}
         {{- if $dns.enabled }}
@@ -62,4 +62,50 @@ spec:
   providerConfigRef:
     name: {{ $state.kubernetesProviderConfigRef.name }}
     kind: {{ $state.kubernetesProviderConfigRef.kind }}
+{{- end }}
+
+{{- if and $exp.enabled $exp.hostname $exp.gatewayRef.name $state.observed.release.ready $state.observed.exposure.routeReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-httproute-before-gitkb
+  annotations:
+    {{ setResourceNameAnnotation "usage-httproute-gitkb" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: helm.m.crossplane.io/v1beta1
+    kind: Release
+    resourceRef:
+      name: {{ $state.releaseName }}
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-exposure-httproute
+{{- end }}
+
+{{- if and $exp.enabled $exp.hostname $exp.gatewayRef.name $state.observed.namespace.ready $state.observed.exposure.routeReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-httproute-before-namespace
+  annotations:
+    {{ setResourceNameAnnotation "usage-httproute-namespace" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-namespace
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-exposure-httproute
 {{- end }}

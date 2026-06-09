@@ -1,7 +1,9 @@
 # code: language=yaml
 #
 # Optional cert-manager Certificate for the exposure hostname. The Certificate
-# lands where the platform Gateway can reference the resulting Secret.
+# lands where the platform Gateway can reference the resulting Secret. This
+# stack does not mutate the Gateway listener; the Gateway owner must reference
+# the generated Secret when it is not already using a wildcard certificate.
 
 {{- $exp := $state.exposure }}
 {{- $cert := $exp.certificate }}
@@ -35,4 +37,27 @@ spec:
   providerConfigRef:
     name: {{ $state.kubernetesProviderConfigRef.name }}
     kind: {{ $state.kubernetesProviderConfigRef.kind }}
+{{- end }}
+
+{{- if and $state.observed.exposure.certificateUsesGitkbNamespace $state.observed.namespace.ready $state.observed.exposure.certificateReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-certificate-before-namespace
+  annotations:
+    {{ setResourceNameAnnotation "usage-certificate-namespace" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-namespace
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-exposure-certificate
 {{- end }}

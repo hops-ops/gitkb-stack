@@ -235,7 +235,7 @@ spec:
                           type: string
                         x-kubernetes-preserve-unknown-fields: true
                   certificate:
-                    description: Optional cert-manager Certificate for the exposure hostname. Use when the platform Gateway does not already serve a wildcard cert.
+                    description: Optional cert-manager Certificate for the exposure hostname. The Gateway listener must already reference this Secret, or be managed by the Gateway owner to reference it.
                     type: object
                     properties:
                       enabled:
@@ -304,6 +304,10 @@ spec:
                   dnsEnabled:
                     type: boolean
                   certificateEnabled:
+                    type: boolean
+                  routeReady:
+                    type: boolean
+                  certificateReady:
                     type: boolean
         required:
         - spec

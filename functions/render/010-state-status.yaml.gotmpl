@@ -4,25 +4,74 @@
 
 {{- $observed := $.observed.resources | default dict }}
 
-{{- $releaseEntry := get $observed "helm-release-gitkb" | default dict }}
-{{- $releaseResource := $releaseEntry.resource | default dict }}
-{{- $releaseStatus := $releaseResource.status | default dict }}
-{{- $releaseReady := false }}
-{{- range ($releaseStatus.conditions | default list) }}
-  {{- if and (eq .type "Ready") (eq .status "True") }}
-    {{- $releaseReady = true }}
+{{- $checkReady := dict }}
+{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" }}
+  {{- $entry := get $observed $key | default dict }}
+  {{- $resource := $entry.resource | default dict }}
+  {{- $status := $resource.status | default dict }}
+  {{- $ready := false }}
+  {{- range ($status.conditions | default list) }}
+    {{- if and (eq .type "Ready") (eq .status "True") }}
+      {{- $ready = true }}
+    {{- end }}
   {{- end }}
+  {{- $checkReady = set $checkReady $key $ready }}
 {{- end }}
 
-{{- $ready := $releaseReady }}
 {{- $exp := $state.exposure }}
+{{- $routeRendered := and $exp.enabled $exp.hostname $exp.gatewayRef.name }}
+{{- $certificateRendered := and $exp.enabled $exp.certificate.enabled $exp.hostname }}
+{{- $certificateUsesGitkbNamespace := and $certificateRendered (eq $exp.certificate.secretNamespace $state.namespace) }}
+
+{{- $namespaceReady := get $checkReady "namespace" }}
+{{- $releaseReady := get $checkReady "helm-release-gitkb" }}
+{{- $routeReady := false }}
+{{- $routeReadyForOverall := true }}
+{{- if $routeRendered }}
+  {{- $routeReady = get $checkReady "exposure-httproute" }}
+  {{- $routeReadyForOverall = $routeReady }}
+{{- end }}
+{{- $certificateReady := false }}
+{{- $certificateReadyForOverall := true }}
+{{- if $certificateRendered }}
+  {{- $certificateReady = get $checkReady "exposure-certificate" }}
+  {{- $certificateReadyForOverall = $certificateReady }}
+{{- end }}
+
+{{- $gitkbNamespaceUsageReady := true }}
+{{- if and $namespaceReady $releaseReady }}
+  {{- $gitkbNamespaceUsageReady = get $checkReady "usage-gitkb-namespace" }}
+{{- end }}
+{{- $httprouteGitkbUsageReady := true }}
+{{- if and $routeRendered $routeReady $releaseReady }}
+  {{- $httprouteGitkbUsageReady = get $checkReady "usage-httproute-gitkb" }}
+{{- end }}
+{{- $httprouteNamespaceUsageReady := true }}
+{{- if and $routeRendered $routeReady $namespaceReady }}
+  {{- $httprouteNamespaceUsageReady = get $checkReady "usage-httproute-namespace" }}
+{{- end }}
+{{- $certificateNamespaceUsageReady := true }}
+{{- if and $certificateUsesGitkbNamespace $certificateReady $namespaceReady }}
+  {{- $certificateNamespaceUsageReady = get $checkReady "usage-certificate-namespace" }}
+{{- end }}
+
+{{- $ready := and $namespaceReady $releaseReady $routeReadyForOverall $certificateReadyForOverall $gitkbNamespaceUsageReady $httprouteGitkbUsageReady $httprouteNamespaceUsageReady $certificateNamespaceUsageReady }}
+
 {{- $exposureURL := "" }}
 {{- if and $exp.enabled $exp.hostname }}
   {{- $exposureURL = printf "https://%s" $exp.hostname }}
 {{- end }}
 
 {{- $state = set $state "observed" (dict
+  "namespace" (dict "ready" $namespaceReady)
   "release" (dict "ready" $releaseReady)
+  "exposure" (dict
+    "routeReady" $routeReady
+    "routeRendered" $routeRendered
+    "certificateReady" $certificateReady
+    "certificateRendered" $certificateRendered
+    "certificateUsesGitkbNamespace" $certificateUsesGitkbNamespace
+  )
 ) }}
 
 {{- $state = set $state "status" (dict
@@ -43,5 +92,7 @@
     "url" $exposureURL
     "dnsEnabled" $exp.dns.enabled
     "certificateEnabled" $exp.certificate.enabled
+    "routeReady" $routeReady
+    "certificateReady" $certificateReady
   )
 ) }}

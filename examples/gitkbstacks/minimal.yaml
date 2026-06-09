@@ -1,0 +1,10 @@
+apiVersion: hops.ops.com.ai/v1alpha1
+kind: GitKBStack
+metadata:
+  name: gitkb
+  namespace: default
+spec:
+  clusterName: pat-local
+  namespace: gitkb
+  persistence:
+    enabled: false

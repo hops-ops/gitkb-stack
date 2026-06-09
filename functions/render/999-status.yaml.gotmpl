@@ -1,0 +1,25 @@
+# code: language=yaml
+#
+# Output XR status.
+
+{{- $xr := getCompositeResource . }}
+{{- $s := $state.status }}
+---
+apiVersion: {{ $xr.apiVersion }}
+kind: {{ $xr.kind }}
+status:
+  ready: {{ $s.ready }}
+  release:
+    name: {{ $s.release.name | quote }}
+    namespace: {{ $s.release.namespace | quote }}
+    ready: {{ $s.release.ready }}
+  service:
+    name: {{ $s.service.name | quote }}
+    namespace: {{ $s.service.namespace | quote }}
+    port: {{ $s.service.port }}
+  exposure:
+    enabled: {{ $s.exposure.enabled }}
+    hostname: {{ $s.exposure.hostname | quote }}
+    url: {{ $s.exposure.url | quote }}
+    dnsEnabled: {{ $s.exposure.dnsEnabled }}
+    certificateEnabled: {{ $s.exposure.certificateEnabled }}

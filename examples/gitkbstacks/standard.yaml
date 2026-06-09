@@ -1,0 +1,32 @@
+apiVersion: hops.ops.com.ai/v1alpha1
+kind: GitKBStack
+metadata:
+  name: platform-kb
+  namespace: default
+spec:
+  clusterName: pat-local
+  namespace: gitkb
+  gitkb:
+    org: hops-ops
+    instance: hops
+    name: Hops Knowledge Base
+  persistence:
+    enabled: true
+    size: 10Gi
+  exposure:
+    enabled: true
+    domain: ops.com.ai
+    gatewayRef:
+      name: platform
+      namespace: istio-ingress
+      sectionName: https
+    dns:
+      enabled: true
+      ttl: "300"
+    certificate:
+      enabled: true
+      secretName: gitkb-tls
+      secretNamespace: istio-ingress
+      issuerRef:
+        name: letsencrypt-production
+        kind: ClusterIssuer

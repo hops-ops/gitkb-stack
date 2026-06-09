@@ -1,0 +1,65 @@
+# code: language=yaml
+#
+# Optional unauthenticated Gateway API HTTPRoute for GitKB sync traffic.
+# ExternalDNS integration is annotation-based and intentionally lives on the
+# HTTPRoute so DNS follows the route hostname.
+
+{{- $exp := $state.exposure }}
+{{- $dns := $exp.dns }}
+
+{{- if and $exp.enabled $exp.hostname $exp.gatewayRef.name }}
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-exposure-httproute
+  annotations:
+    {{ setResourceNameAnnotation "exposure-httproute" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: gitkb
+        namespace: {{ $state.namespace }}
+        labels: {{ $state.labels | toJson }}
+        {{- if $dns.enabled }}
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: {{ $dns.hostname | quote }}
+          {{- if $dns.target }}
+          external-dns.alpha.kubernetes.io/target: {{ $dns.target | quote }}
+          {{- end }}
+          {{- if $dns.ttl }}
+          external-dns.alpha.kubernetes.io/ttl: {{ $dns.ttl | quote }}
+          {{- end }}
+          {{- with $dns.annotations }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        {{- end }}
+      spec:
+        parentRefs:
+        - name: {{ $exp.gatewayRef.name }}
+          {{- if $exp.gatewayRef.namespace }}
+          namespace: {{ $exp.gatewayRef.namespace }}
+          {{- end }}
+          {{- if $exp.gatewayRef.sectionName }}
+          sectionName: {{ $exp.gatewayRef.sectionName }}
+          {{- end }}
+        hostnames:
+        - {{ $exp.hostname | quote }}
+        rules:
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /
+          backendRefs:
+          - name: {{ $exp.serviceName }}
+            namespace: {{ $state.namespace }}
+            port: {{ $state.server.port }}
+  providerConfigRef:
+    name: {{ $state.kubernetesProviderConfigRef.name }}
+    kind: {{ $state.kubernetesProviderConfigRef.kind }}
+{{- end }}

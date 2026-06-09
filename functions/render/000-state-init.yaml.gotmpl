@@ -1,0 +1,158 @@
+# code: language=yaml
+#
+# Initialize $state with spec defaults.
+#
+# This pass intentionally exposes GitKB without auth when exposure.enabled is
+# true. Gateway/OIDC policy is deferred to a later pass.
+
+{{- $xr := getCompositeResource . }}
+{{- $spec := $xr.spec | default dict }}
+{{- $metadata := $xr.metadata | default dict }}
+
+{{- $name := $metadata.name | default "gitkb" }}
+{{- $clusterName := $spec.clusterName | default $name }}
+{{- $namespace := $spec.namespace | default "gitkb" }}
+{{- $releaseName := $spec.releaseName | default $name }}
+{{- $chartVersion := $spec.chartVersion | default "0.1.0" }}
+{{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
+
+{{- $defaultLabels := dict
+  "hops.ops.com.ai/managed" "true"
+  (printf "hops.ops.com.ai/%s" (lower $xr.kind)) $name
+}}
+{{- $labels := mergeOverwrite (dict) $defaultLabels ($spec.labels | default dict) }}
+
+{{- $providerConfigRefs := $spec.providerConfigRefs | default dict }}
+{{- $helmProviderConfigRef := ($providerConfigRefs.helm | default ($spec.helmProviderConfigRef | default dict)) }}
+{{- $helmProviderConfigRef = dict
+  "name" ($helmProviderConfigRef.name | default $clusterName)
+  "kind" ($helmProviderConfigRef.kind | default "ProviderConfig")
+}}
+{{- $kubernetesProviderConfigRef := ($providerConfigRefs.kubernetes | default ($spec.kubernetesProviderConfigRef | default dict)) }}
+{{- $kubernetesProviderConfigRef = dict
+  "name" ($kubernetesProviderConfigRef.name | default $clusterName)
+  "kind" ($kubernetesProviderConfigRef.kind | default "ProviderConfig")
+}}
+
+{{- $gitkb := $spec.gitkb | default dict }}
+{{- $image := $spec.image | default dict }}
+{{- $server := $spec.server | default dict }}
+{{- $persistence := $spec.persistence | default dict }}
+{{- $seed := $spec.seed | default dict }}
+{{- $seedSecretRef := $seed.secretRef | default dict }}
+{{- $startupCheck := $spec.startupCheck | default dict }}
+
+{{- $serverNoEmbeddings := true }}
+{{- if hasKey $server "noEmbeddings" }}{{- $serverNoEmbeddings = $server.noEmbeddings }}{{- end }}
+{{- $persistenceEnabled := true }}
+{{- if hasKey $persistence "enabled" }}{{- $persistenceEnabled = $persistence.enabled }}{{- end }}
+{{- $startupCheckEnabled := true }}
+{{- if hasKey $startupCheck "enabled" }}{{- $startupCheckEnabled = $startupCheck.enabled }}{{- end }}
+
+{{- $serviceName := printf "%s-gitkb-server" $releaseName }}
+{{- if contains "gitkb-server" $releaseName }}
+  {{- $serviceName = $releaseName }}
+{{- end }}
+
+{{- $exp := $spec.exposure | default dict }}
+{{- $expEnabled := false }}
+{{- if hasKey $exp "enabled" }}{{- $expEnabled = $exp.enabled }}{{- end }}
+{{- $expDomain := $exp.domain | default "" }}
+{{- $expHostname := $exp.hostname | default "" }}
+{{- if and (not $expHostname) $expDomain }}
+  {{- $expHostname = printf "kb.%s" $expDomain }}
+{{- end }}
+{{- $expServiceName := $exp.serviceName | default $serviceName }}
+{{- $gatewayRef := $exp.gatewayRef | default dict }}
+
+{{- $dns := $exp.dns | default dict }}
+{{- $dnsEnabled := $expEnabled }}
+{{- if hasKey $dns "enabled" }}{{- $dnsEnabled = $dns.enabled }}{{- end }}
+{{- $dnsHostname := $dns.hostname | default $expHostname }}
+{{- $dnsAnnotations := $dns.annotations | default dict }}
+
+{{- $cert := $exp.certificate | default dict }}
+{{- $certEnabled := false }}
+{{- if hasKey $cert "enabled" }}{{- $certEnabled = $cert.enabled }}{{- end }}
+{{- $certSecretName := $cert.secretName | default (printf "%s-tls" $releaseName) }}
+{{- $certSecretNamespace := $cert.secretNamespace | default ($gatewayRef.namespace | default $namespace) }}
+{{- $certIssuerRef := $cert.issuerRef | default dict }}
+
+{{- $state := dict
+  "name" $name
+  "kind" $xr.kind
+  "apiVersion" $xr.apiVersion
+  "clusterName" $clusterName
+  "xrNamespace" ($metadata.namespace | default "default")
+  "namespace" $namespace
+  "releaseName" $releaseName
+  "chartVersion" $chartVersion
+  "managementPolicies" $managementPolicies
+  "labels" $labels
+  "helmProviderConfigRef" $helmProviderConfigRef
+  "kubernetesProviderConfigRef" $kubernetesProviderConfigRef
+  "serviceName" $serviceName
+  "gitkb" (dict
+    "org" ($gitkb.org | default "hops-ops")
+    "instance" ($gitkb.instance | default "knowledge-base")
+    "name" ($gitkb.name | default "GitKB Knowledge Base")
+    "root" ($gitkb.root | default "/data/kb")
+  )
+  "image" (dict
+    "repository" ($image.repository | default "ghcr.io/hops-ops/gitkb-server")
+    "tag" ($image.tag | default "0.2.12-1")
+    "pullPolicy" ($image.pullPolicy | default "IfNotPresent")
+  )
+  "server" (dict
+    "port" ($server.port | default 8080)
+    "noEmbeddings" $serverNoEmbeddings
+    "logFormat" ($server.logFormat | default "json")
+  )
+  "persistence" (dict
+    "enabled" $persistenceEnabled
+    "size" ($persistence.size | default "10Gi")
+    "storageClassName" ($persistence.storageClassName | default "")
+    "existingClaim" ($persistence.existingClaim | default "")
+  )
+  "seed" (dict
+    "mode" ($seed.mode | default "empty")
+    "fileName" ($seed.fileName | default "")
+    "secretRef" (dict
+      "name" ($seedSecretRef.name | default "")
+      "key" ($seedSecretRef.key | default "")
+    )
+  )
+  "startupCheck" (dict
+    "enabled" $startupCheckEnabled
+  )
+  "exposure" (dict
+    "enabled" $expEnabled
+    "hostname" $expHostname
+    "serviceName" $expServiceName
+    "gatewayRef" (dict
+      "name" ($gatewayRef.name | default "")
+      "namespace" ($gatewayRef.namespace | default "")
+      "sectionName" ($gatewayRef.sectionName | default "")
+    )
+    "dns" (dict
+      "enabled" $dnsEnabled
+      "hostname" $dnsHostname
+      "target" ($dns.target | default "")
+      "ttl" ($dns.ttl | default "")
+      "annotations" $dnsAnnotations
+    )
+    "certificate" (dict
+      "enabled" $certEnabled
+      "secretName" $certSecretName
+      "secretNamespace" $certSecretNamespace
+      "issuerRef" (dict
+        "name" ($certIssuerRef.name | default "")
+        "kind" ($certIssuerRef.kind | default "ClusterIssuer")
+      )
+    )
+  )
+  "values" ($spec.values | default dict)
+  "overrideAllValues" ($spec.overrideAllValues | default dict)
+  "observed" (dict)
+  "status" (dict)
+}}

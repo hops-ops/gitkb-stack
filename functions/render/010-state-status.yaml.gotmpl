@@ -1,0 +1,47 @@
+# code: language=yaml
+#
+# Extract observed resource state and compute user-facing status.
+
+{{- $observed := $.observed.resources | default dict }}
+
+{{- $releaseEntry := get $observed "helm-release-gitkb" | default dict }}
+{{- $releaseResource := $releaseEntry.resource | default dict }}
+{{- $releaseStatus := $releaseResource.status | default dict }}
+{{- $releaseReady := false }}
+{{- range ($releaseStatus.conditions | default list) }}
+  {{- if and (eq .type "Ready") (eq .status "True") }}
+    {{- $releaseReady = true }}
+  {{- end }}
+{{- end }}
+
+{{- $ready := $releaseReady }}
+{{- $exp := $state.exposure }}
+{{- $exposureURL := "" }}
+{{- if and $exp.enabled $exp.hostname }}
+  {{- $exposureURL = printf "https://%s" $exp.hostname }}
+{{- end }}
+
+{{- $state = set $state "observed" (dict
+  "release" (dict "ready" $releaseReady)
+) }}
+
+{{- $state = set $state "status" (dict
+  "ready" $ready
+  "release" (dict
+    "name" $state.releaseName
+    "namespace" $state.namespace
+    "ready" $releaseReady
+  )
+  "service" (dict
+    "name" $state.serviceName
+    "namespace" $state.namespace
+    "port" $state.server.port
+  )
+  "exposure" (dict
+    "enabled" $exp.enabled
+    "hostname" $exp.hostname
+    "url" $exposureURL
+    "dnsEnabled" $exp.dns.enabled
+    "certificateEnabled" $exp.certificate.enabled
+  )
+) }}

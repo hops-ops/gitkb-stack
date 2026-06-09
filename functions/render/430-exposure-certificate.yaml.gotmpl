@@ -1,0 +1,38 @@
+# code: language=yaml
+#
+# Optional cert-manager Certificate for the exposure hostname. The Certificate
+# lands where the platform Gateway can reference the resulting Secret.
+
+{{- $exp := $state.exposure }}
+{{- $cert := $exp.certificate }}
+
+{{- if and $exp.enabled $cert.enabled $exp.hostname }}
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-exposure-certificate
+  annotations:
+    {{ setResourceNameAnnotation "exposure-certificate" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: {{ $cert.secretName }}
+        namespace: {{ $cert.secretNamespace }}
+        labels: {{ $state.labels | toJson }}
+      spec:
+        secretName: {{ $cert.secretName }}
+        issuerRef:
+          name: {{ $cert.issuerRef.name }}
+          kind: {{ $cert.issuerRef.kind }}
+        dnsNames:
+        - {{ $exp.hostname | quote }}
+  providerConfigRef:
+    name: {{ $state.kubernetesProviderConfigRef.name }}
+    kind: {{ $state.kubernetesProviderConfigRef.kind }}
+{{- end }}

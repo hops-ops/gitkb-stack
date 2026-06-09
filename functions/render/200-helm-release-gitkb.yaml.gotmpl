@@ -1,0 +1,67 @@
+# code: language=yaml
+#
+# Helm Release: gitkb-server.
+#
+# The chart owns StatefulSet, Service, PVC, probes, and runtime env. The stack
+# owns namespace, Gateway API exposure, TLS certificate, and DNS annotations.
+
+{{- $chartDefaults := dict
+  "fullnameOverride" $state.serviceName
+  "image" $state.image
+  "server" $state.server
+  "gitkb" $state.gitkb
+  "startupCheck" $state.startupCheck
+  "seed" $state.seed
+  "persistence" $state.persistence
+}}
+
+---
+apiVersion: helm.m.crossplane.io/v1beta1
+kind: Release
+metadata:
+  name: {{ $state.releaseName }}
+  annotations:
+    {{ setResourceNameAnnotation "helm-release-gitkb" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    chart:
+      name: gitkb-server
+      repository: oci://ghcr.io/hops-ops/charts
+      version: {{ $state.chartVersion | quote }}
+    namespace: {{ $state.namespace }}
+    wait: true
+    {{- if $state.overrideAllValues }}
+    values:
+      {{- toYaml $state.overrideAllValues | nindent 6 }}
+    {{- else }}
+    {{- $merged := mergeOverwrite $chartDefaults $state.values }}
+    values:
+      {{- toYaml $merged | nindent 6 }}
+    {{- end }}
+  rollbackLimit: 3
+  providerConfigRef:
+    name: {{ $state.helmProviderConfigRef.name }}
+    kind: {{ $state.helmProviderConfigRef.kind }}
+
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-gitkb-before-namespace
+  annotations:
+    {{ setResourceNameAnnotation "usage-gitkb-namespace" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-namespace
+  by:
+    apiVersion: helm.m.crossplane.io/v1beta1
+    kind: Release
+    resourceRef:
+      name: {{ $state.releaseName }}

@@ -1,0 +1,309 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: gitkbstacks.hops.ops.com.ai
+spec:
+  group: hops.ops.com.ai
+  names:
+    kind: GitKBStack
+    plural: gitkbstacks
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    referenceable: true
+    served: true
+    schema:
+      openAPIV3Schema:
+        description: GitKBStack serves a GitKB knowledge base with optional Gateway API exposure, TLS certificate provisioning, and ExternalDNS integration.
+        type: object
+        properties:
+          spec:
+            description: GitKBStackSpec defines the desired state.
+            type: object
+            properties:
+              clusterName:
+                description: Name of the target cluster. Used as default for Helm and Kubernetes ProviderConfig names.
+                type: string
+              managementPolicies:
+                description: Management policies applied to all composed resources. Defaults to ["*"].
+                type: array
+                items:
+                  type: string
+                default:
+                - "*"
+              labels:
+                description: Custom labels merged with stack default labels and applied to all composed resources.
+                type: object
+                additionalProperties:
+                  type: string
+                x-kubernetes-preserve-unknown-fields: true
+              providerConfigRefs:
+                description: ProviderConfig references for composed Helm and Kubernetes resources. Each defaults to clusterName.
+                type: object
+                properties:
+                  helm:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      kind:
+                        type: string
+                        enum:
+                        - ProviderConfig
+                        - ClusterProviderConfig
+                  kubernetes:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      kind:
+                        type: string
+                        enum:
+                        - ProviderConfig
+                        - ClusterProviderConfig
+              helmProviderConfigRef:
+                description: Deprecated flat Helm ProviderConfig reference. Prefer providerConfigRefs.helm.
+                type: object
+                properties:
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum:
+                    - ProviderConfig
+                    - ClusterProviderConfig
+              kubernetesProviderConfigRef:
+                description: Deprecated flat Kubernetes ProviderConfig reference. Prefer providerConfigRefs.kubernetes.
+                type: object
+                properties:
+                  name:
+                    type: string
+                  kind:
+                    type: string
+                    enum:
+                    - ProviderConfig
+                    - ClusterProviderConfig
+              namespace:
+                description: Namespace for the GitKB install. Defaults to "gitkb".
+                type: string
+              releaseName:
+                description: Helm release name for the gitkb-server chart. Defaults to metadata.name.
+                type: string
+              chartVersion:
+                description: Version of the gitkb-server chart. Defaults to "0.1.0".
+                type: string
+              gitkb:
+                description: GitKB runtime settings passed to the chart.
+                type: object
+                properties:
+                  org:
+                    type: string
+                    default: hops-ops
+                  instance:
+                    type: string
+                    default: knowledge-base
+                  name:
+                    type: string
+                    default: GitKB Knowledge Base
+                  root:
+                    type: string
+                    default: /data/kb
+              image:
+                description: gitkb-server image settings passed to the chart.
+                type: object
+                properties:
+                  repository:
+                    type: string
+                    default: ghcr.io/hops-ops/gitkb-server
+                  tag:
+                    type: string
+                    default: 0.2.12-1
+                  pullPolicy:
+                    type: string
+                    enum:
+                    - Always
+                    - IfNotPresent
+                    - Never
+                    default: IfNotPresent
+              server:
+                description: GitKB serve settings passed to the chart.
+                type: object
+                properties:
+                  port:
+                    type: integer
+                    default: 8080
+                  noEmbeddings:
+                    type: boolean
+                    default: true
+                  logFormat:
+                    type: string
+                    enum:
+                    - pretty
+                    - compact
+                    - json
+                    default: json
+              persistence:
+                description: GitKB persistent storage settings.
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    default: true
+                  size:
+                    type: string
+                    default: 10Gi
+                  storageClassName:
+                    type: string
+                  existingClaim:
+                    type: string
+              seed:
+                description: First-boot seed settings. The chart currently supports empty, existing, backup, and bundle.
+                type: object
+                properties:
+                  mode:
+                    type: string
+                    enum:
+                    - empty
+                    - existing
+                    - backup
+                    - bundle
+                    default: empty
+                  fileName:
+                    type: string
+                  secretRef:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      key:
+                        type: string
+              startupCheck:
+                description: Startup integrity check settings.
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    default: true
+              exposure:
+                description: Optional unauthenticated Gateway API exposure. Public exposure is intentionally unauthenticated in this pass; add Gateway/OIDC policy in a later pass.
+                type: object
+                properties:
+                  enabled:
+                    description: Render HTTPRoute and optional TLS certificate/DNS annotations.
+                    type: boolean
+                    default: false
+                  domain:
+                    description: Parent DNS zone, used to default hostname to kb.<domain>.
+                    type: string
+                  hostname:
+                    description: Public hostname for GitKB. Defaults to kb.<exposure.domain> when domain is set.
+                    type: string
+                  serviceName:
+                    description: Backend Service name. Defaults to the chart fullname for the chosen release.
+                    type: string
+                  gatewayRef:
+                    description: Gateway parentRef to attach the HTTPRoute to.
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+                      sectionName:
+                        description: Gateway listener section name, typically an HTTPS listener.
+                        type: string
+                  dns:
+                    description: ExternalDNS annotations placed on the HTTPRoute.
+                    type: object
+                    properties:
+                      enabled:
+                        description: Add external-dns hostname annotation to the HTTPRoute. Defaults to exposure.enabled.
+                        type: boolean
+                      hostname:
+                        description: DNS hostname annotation value. Defaults to exposure.hostname.
+                        type: string
+                      target:
+                        description: Optional external-dns target annotation value.
+                        type: string
+                      ttl:
+                        description: Optional external-dns TTL annotation value.
+                        type: string
+                      annotations:
+                        description: Additional DNS controller annotations to place on the HTTPRoute.
+                        type: object
+                        additionalProperties:
+                          type: string
+                        x-kubernetes-preserve-unknown-fields: true
+                  certificate:
+                    description: Optional cert-manager Certificate for the exposure hostname. Use when the platform Gateway does not already serve a wildcard cert.
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                        default: false
+                      secretName:
+                        description: Secret where cert-manager stores the issued cert. Defaults to <releaseName>-tls.
+                        type: string
+                      secretNamespace:
+                        description: Namespace for the cert Secret. Defaults to gatewayRef.namespace when set, otherwise the GitKB namespace.
+                        type: string
+                      issuerRef:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          kind:
+                            type: string
+                            enum:
+                            - Issuer
+                            - ClusterIssuer
+                            default: ClusterIssuer
+              values:
+                description: Helm values merged over stack defaults for the gitkb-server chart.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              overrideAllValues:
+                description: Helm values that replace all stack defaults for the gitkb-server chart.
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+            required:
+            - clusterName
+          status:
+            description: GitKBStackStatus defines the observed state.
+            type: object
+            properties:
+              ready:
+                type: boolean
+              release:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                  ready:
+                    type: boolean
+              service:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                  port:
+                    type: integer
+              exposure:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                  hostname:
+                    type: string
+                  url:
+                    type: string
+                  dnsEnabled:
+                    type: boolean
+                  certificateEnabled:
+                    type: boolean
+        required:
+        - spec

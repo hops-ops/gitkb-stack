@@ -5,7 +5,7 @@
 {{- $observed := $.observed.resources | default dict }}
 
 {{- $checkReady := dict }}
-{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" }}
+{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "auth-waypoint" "auth-requestauthentication" "auth-authorizationpolicy" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" "usage-auth-waypoint-namespace" "usage-auth-jwt-namespace" "usage-auth-policy-namespace" "usage-auth-jwt-gitkb" "usage-auth-policy-gitkb" }}
   {{- $entry := get $observed $key | default dict }}
   {{- $resource := $entry.resource | default dict }}
   {{- $status := $resource.status | default dict }}
@@ -22,6 +22,7 @@
 {{- $routeRendered := and $exp.enabled $exp.domain $exp.gatewayRef.name }}
 {{- $certificateRendered := and $exp.enabled $exp.certificate.enabled $exp.domain }}
 {{- $certificateUsesGitkbNamespace := and $certificateRendered (eq $exp.certificate.secretNamespace $state.namespace) }}
+{{- $auth := $state.auth.istioJwt }}
 
 {{- $namespaceReady := get $checkReady "namespace" }}
 {{- $releaseReady := get $checkReady "helm-release-gitkb" }}
@@ -55,7 +56,41 @@
   {{- $certificateNamespaceUsageReady = get $checkReady "usage-certificate-namespace" }}
 {{- end }}
 
-{{- $ready := and $namespaceReady $releaseReady $routeReadyForOverall $certificateReadyForOverall $gitkbNamespaceUsageReady $httprouteGitkbUsageReady $httprouteNamespaceUsageReady $certificateNamespaceUsageReady }}
+{{- $authWaypointReady := false }}
+{{- $authRequestAuthenticationReady := false }}
+{{- $authAuthorizationPolicyReady := false }}
+{{- $authReadyForOverall := true }}
+{{- $authWaypointNamespaceUsageReady := true }}
+{{- $authJwtNamespaceUsageReady := true }}
+{{- $authPolicyNamespaceUsageReady := true }}
+{{- $authJwtGitkbUsageReady := true }}
+{{- $authPolicyGitkbUsageReady := true }}
+{{- if $auth.enabled }}
+  {{- $authReadyForOverall = false }}
+  {{- if $auth.rendered }}
+    {{- $authWaypointReady = get $checkReady "auth-waypoint" }}
+    {{- $authRequestAuthenticationReady = get $checkReady "auth-requestauthentication" }}
+    {{- $authAuthorizationPolicyReady = get $checkReady "auth-authorizationpolicy" }}
+    {{- if and $namespaceReady $authWaypointReady }}
+      {{- $authWaypointNamespaceUsageReady = get $checkReady "usage-auth-waypoint-namespace" }}
+    {{- end }}
+    {{- if and $namespaceReady $authRequestAuthenticationReady }}
+      {{- $authJwtNamespaceUsageReady = get $checkReady "usage-auth-jwt-namespace" }}
+    {{- end }}
+    {{- if and $namespaceReady $authAuthorizationPolicyReady }}
+      {{- $authPolicyNamespaceUsageReady = get $checkReady "usage-auth-policy-namespace" }}
+    {{- end }}
+    {{- if and $releaseReady $authRequestAuthenticationReady }}
+      {{- $authJwtGitkbUsageReady = get $checkReady "usage-auth-jwt-gitkb" }}
+    {{- end }}
+    {{- if and $releaseReady $authAuthorizationPolicyReady }}
+      {{- $authPolicyGitkbUsageReady = get $checkReady "usage-auth-policy-gitkb" }}
+    {{- end }}
+    {{- $authReadyForOverall = and $authWaypointReady $authRequestAuthenticationReady $authAuthorizationPolicyReady $authWaypointNamespaceUsageReady $authJwtNamespaceUsageReady $authPolicyNamespaceUsageReady $authJwtGitkbUsageReady $authPolicyGitkbUsageReady }}
+  {{- end }}
+{{- end }}
+
+{{- $ready := and $namespaceReady $releaseReady $routeReadyForOverall $certificateReadyForOverall $gitkbNamespaceUsageReady $httprouteGitkbUsageReady $httprouteNamespaceUsageReady $certificateNamespaceUsageReady $authReadyForOverall }}
 
 {{- $exposureURL := "" }}
 {{- if and $exp.enabled $exp.domain }}
@@ -74,6 +109,16 @@
     "certificateReady" $certificateReady
     "certificateRendered" $certificateRendered
     "certificateUsesGitkbNamespace" $certificateUsesGitkbNamespace
+  )
+  "auth" (dict
+    "waypointReady" $authWaypointReady
+    "requestAuthenticationReady" $authRequestAuthenticationReady
+    "authorizationPolicyReady" $authAuthorizationPolicyReady
+    "waypointNamespaceUsageReady" $authWaypointNamespaceUsageReady
+    "jwtNamespaceUsageReady" $authJwtNamespaceUsageReady
+    "policyNamespaceUsageReady" $authPolicyNamespaceUsageReady
+    "jwtGitkbUsageReady" $authJwtGitkbUsageReady
+    "policyGitkbUsageReady" $authPolicyGitkbUsageReady
   )
 ) }}
 
@@ -98,5 +143,15 @@
     "certificateEnabled" $exp.certificate.enabled
     "routeReady" $routeReady
     "certificateReady" $certificateReady
+  )
+  "auth" (dict
+    "istioJwt" (dict
+      "enabled" $auth.enabled
+      "rendered" $auth.rendered
+      "issuer" $auth.issuer
+      "waypointReady" $authWaypointReady
+      "requestAuthenticationReady" $authRequestAuthenticationReady
+      "authorizationPolicyReady" $authAuthorizationPolicyReady
+    )
   )
 ) }}

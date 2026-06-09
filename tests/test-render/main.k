@@ -45,7 +45,7 @@ items = [
                         chart = {
                             name = "gitkb-server"
                             repository = "https://hops-ops.github.io/gitkb-server-chart"
-                            version = "0.1.0"
+                            version = "0.2.0"
                         }
                         namespace = "gitkb"
                         values = {
@@ -165,6 +165,284 @@ items = [
                                     port = 8080
                                 }]
                             }]
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
+        metadata.name = "istio-jwt-auth-renders-waypoint-and-policies"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.auth = {
+                    istioJwt = {
+                        enabled = True
+                        issuer = "https://auth.ops.com.ai"
+                        jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
+                        audiences = ["373410628280264299"]
+                    }
+                }
+            }
+            assertResources = [
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata.name = "platform-kb-namespace"
+                    spec.forProvider.manifest.metadata.labels = {
+                        "istio.io/dataplane-mode" = "ambient"
+                    }
+                }
+                {
+                    apiVersion = "helm.m.crossplane.io/v1beta1"
+                    kind = "Release"
+                    metadata.name = "platform-kb"
+                    spec.forProvider.values.service.labels = {
+                        "istio.io/use-waypoint" = "platform-kb-waypoint"
+                        "istio.io/ingress-use-waypoint" = "true"
+                    }
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata.name = "platform-kb-auth-waypoint"
+                    spec.forProvider.manifest = {
+                        apiVersion = "gateway.networking.k8s.io/v1"
+                        kind = "Gateway"
+                        metadata = {
+                            name = "platform-kb-waypoint"
+                            namespace = "gitkb"
+                            labels = {
+                                "istio.io/waypoint-for" = "service"
+                            }
+                        }
+                        spec = {
+                            gatewayClassName = "istio-waypoint"
+                            listeners = [{
+                                name = "mesh"
+                                port = 15008
+                                protocol = "HBONE"
+                                allowedRoutes.namespaces.from = "Same"
+                            }]
+                        }
+                    }
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata.name = "platform-kb-auth-requestauthentication"
+                    spec.forProvider.manifest = {
+                        apiVersion = "security.istio.io/v1"
+                        kind = "RequestAuthentication"
+                        metadata = {
+                            name = "platform-kb-jwt"
+                            namespace = "gitkb"
+                        }
+                        spec = {
+                            targetRefs = [{
+                                group = ""
+                                kind = "Service"
+                                name = "platform-kb-gitkb-server"
+                            }]
+                            jwtRules = [{
+                                issuer = "https://auth.ops.com.ai"
+                                jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
+                                audiences = ["373410628280264299"]
+                            }]
+                        }
+                    }
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata.name = "platform-kb-auth-authorizationpolicy"
+                    spec.forProvider.manifest = {
+                        apiVersion = "security.istio.io/v1"
+                        kind = "AuthorizationPolicy"
+                        metadata = {
+                            name = "platform-kb-require-jwt"
+                            namespace = "gitkb"
+                        }
+                        spec = {
+                            targetRefs = [{
+                                group = ""
+                                kind = "Service"
+                                name = "platform-kb-gitkb-server"
+                            }]
+                            action = "ALLOW"
+                            rules = [{
+                                from = [{
+                                    source.requestPrincipals = ["*"]
+                                }]
+                            }]
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
+        metadata.name = "observed-auth-ready-renders-usages-and-ready-status"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.auth = {
+                    istioJwt = {
+                        enabled = True
+                        issuer = "https://auth.ops.com.ai"
+                        jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
+                    }
+                }
+            }
+            observedResources = [
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata = {
+                        name = "platform-kb-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "helm.m.crossplane.io/v1beta1"
+                    kind = "Release"
+                    metadata = {
+                        name = "platform-kb"
+                        annotations = {"crossplane.io/composition-resource-name" = "helm-release-gitkb"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata = {
+                        name = "platform-kb-auth-waypoint"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-waypoint"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata = {
+                        name = "platform-kb-auth-requestauthentication"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-requestauthentication"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata = {
+                        name = "platform-kb-auth-authorizationpolicy"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-authorizationpolicy"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-gitkb-before-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-gitkb-namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-auth-waypoint-before-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-auth-waypoint-namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-auth-jwt-before-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-auth-jwt-namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-auth-policy-before-namespace"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-auth-policy-namespace"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-auth-jwt-before-gitkb"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-auth-jwt-gitkb"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata = {
+                        name = "platform-kb-delete-auth-policy-before-gitkb"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-auth-policy-gitkb"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+            ]
+            assertResources = [
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-waypoint-before-namespace"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-jwt-before-namespace"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-policy-before-namespace"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-jwt-before-gitkb"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-policy-before-gitkb"
+                }
+                {
+                    apiVersion = "hops.ops.com.ai/v1alpha1"
+                    kind = "GitKB"
+                    metadata.name = "platform-kb"
+                    status = {
+                        ready = True
+                        auth.istioJwt = {
+                            enabled = True
+                            rendered = True
+                            issuer = "https://auth.ops.com.ai"
+                            waypointReady = True
+                            requestAuthenticationReady = True
+                            authorizationPolicyReady = True
                         }
                     }
                 }

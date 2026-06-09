@@ -26,3 +26,11 @@ status:
     certificateEnabled: {{ $s.exposure.certificateEnabled }}
     routeReady: {{ $s.exposure.routeReady }}
     certificateReady: {{ $s.exposure.certificateReady }}
+  auth:
+    istioJwt:
+      enabled: {{ $s.auth.istioJwt.enabled }}
+      rendered: {{ $s.auth.istioJwt.rendered }}
+      issuer: {{ $s.auth.istioJwt.issuer | quote }}
+      waypointReady: {{ $s.auth.istioJwt.waypointReady }}
+      requestAuthenticationReady: {{ $s.auth.istioJwt.requestAuthenticationReady }}
+      authorizationPolicyReady: {{ $s.auth.istioJwt.authorizationPolicyReady }}

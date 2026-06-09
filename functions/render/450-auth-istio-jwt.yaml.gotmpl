@@ -1,0 +1,231 @@
+# code: language=yaml
+#
+# Optional Istio ambient waypoint JWT enforcement for GitKB sync traffic.
+# This proves and packages the mesh-side auth gate only; GitKB CLI token
+# acquisition/injection remains a separate client-side concern.
+
+{{- $auth := $state.auth.istioJwt }}
+{{- $observedAuth := $state.observed.auth | default dict }}
+{{- $waypointLabels := mergeOverwrite (dict) $state.labels (dict "istio.io/waypoint-for" "service") }}
+
+{{- if $auth.rendered }}
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-auth-waypoint
+  annotations:
+    {{ setResourceNameAnnotation "auth-waypoint" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      metadata:
+        name: {{ $auth.waypoint.name }}
+        namespace: {{ $state.namespace }}
+        labels:
+          {{- toYaml $waypointLabels | nindent 10 }}
+      spec:
+        gatewayClassName: {{ $auth.waypoint.gatewayClassName }}
+        listeners:
+        - name: mesh
+          port: 15008
+          protocol: HBONE
+          allowedRoutes:
+            namespaces:
+              from: Same
+  providerConfigRef:
+    name: {{ $state.kubernetesProviderConfigRef.name }}
+    kind: {{ $state.kubernetesProviderConfigRef.kind }}
+
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-auth-requestauthentication
+  annotations:
+    {{ setResourceNameAnnotation "auth-requestauthentication" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: security.istio.io/v1
+      kind: RequestAuthentication
+      metadata:
+        name: {{ $auth.requestAuthenticationName }}
+        namespace: {{ $state.namespace }}
+        labels: {{ $state.labels | toJson }}
+      spec:
+        targetRefs:
+        - group: ""
+          kind: Service
+          name: {{ $state.serviceName }}
+        jwtRules:
+        - issuer: {{ $auth.issuer | quote }}
+          {{- if $auth.jwksUri }}
+          jwksUri: {{ $auth.jwksUri | quote }}
+          {{- end }}
+          {{- if $auth.audiences }}
+          audiences:
+          {{- range $audience := $auth.audiences }}
+          - {{ $audience | quote }}
+          {{- end }}
+          {{- end }}
+  providerConfigRef:
+    name: {{ $state.kubernetesProviderConfigRef.name }}
+    kind: {{ $state.kubernetesProviderConfigRef.kind }}
+
+---
+apiVersion: kubernetes.m.crossplane.io/v1alpha1
+kind: Object
+metadata:
+  name: {{ $state.name }}-auth-authorizationpolicy
+  annotations:
+    {{ setResourceNameAnnotation "auth-authorizationpolicy" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    manifest:
+      apiVersion: security.istio.io/v1
+      kind: AuthorizationPolicy
+      metadata:
+        name: {{ $auth.authorizationPolicyName }}
+        namespace: {{ $state.namespace }}
+        labels: {{ $state.labels | toJson }}
+      spec:
+        targetRefs:
+        - group: ""
+          kind: Service
+          name: {{ $state.serviceName }}
+        action: ALLOW
+        rules:
+        - from:
+          - source:
+              requestPrincipals:
+              {{- range $principal := $auth.requestPrincipals }}
+              - {{ $principal | quote }}
+              {{- end }}
+  providerConfigRef:
+    name: {{ $state.kubernetesProviderConfigRef.name }}
+    kind: {{ $state.kubernetesProviderConfigRef.kind }}
+{{- end }}
+
+{{- if and $auth.rendered ($state.observed.namespace.ready | default false) ($observedAuth.waypointReady | default false) }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-waypoint-before-namespace
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-waypoint-namespace" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-namespace
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-auth-waypoint
+{{- end }}
+
+{{- if and $auth.rendered ($state.observed.namespace.ready | default false) ($observedAuth.requestAuthenticationReady | default false) }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-jwt-before-namespace
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-jwt-namespace" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-namespace
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-auth-requestauthentication
+{{- end }}
+
+{{- if and $auth.rendered ($state.observed.namespace.ready | default false) ($observedAuth.authorizationPolicyReady | default false) }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-policy-before-namespace
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-policy-namespace" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-namespace
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-auth-authorizationpolicy
+{{- end }}
+
+{{- if and $auth.rendered ($state.observed.release.ready | default false) ($observedAuth.requestAuthenticationReady | default false) }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-jwt-before-gitkb
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-jwt-gitkb" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: helm.m.crossplane.io/v1beta1
+    kind: Release
+    resourceRef:
+      name: {{ $state.releaseName }}
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-auth-requestauthentication
+{{- end }}
+
+{{- if and $auth.rendered ($state.observed.release.ready | default false) ($observedAuth.authorizationPolicyReady | default false) }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-policy-before-gitkb
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-policy-gitkb" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: helm.m.crossplane.io/v1beta1
+    kind: Release
+    resourceRef:
+      name: {{ $state.releaseName }}
+  by:
+    apiVersion: kubernetes.m.crossplane.io/v1alpha1
+    kind: Object
+    resourceRef:
+      name: {{ $state.name }}-auth-authorizationpolicy
+{{- end }}

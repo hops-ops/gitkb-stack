@@ -68,7 +68,7 @@ spec:
                 description: Helm release name for the gitkb-server chart. Defaults to metadata.name.
                 type: string
               chartVersion:
-                description: Version of the gitkb-server chart. Defaults to "0.1.0".
+                description: Version of the gitkb-server chart. Defaults to "0.2.0".
                 type: string
               gitkb:
                 description: GitKB runtime settings passed to the chart.
@@ -165,7 +165,7 @@ spec:
                     type: boolean
                     default: true
               exposure:
-                description: Optional unauthenticated Gateway API exposure. Public exposure is intentionally unauthenticated in this pass; add Gateway/OIDC policy in a later pass.
+                description: Optional Gateway API exposure. Pair with auth.istioJwt for Istio ambient JWT enforcement before broad public use.
                 type: object
                 properties:
                   enabled:
@@ -235,6 +235,45 @@ spec:
                             - Issuer
                             - ClusterIssuer
                             default: ClusterIssuer
+              auth:
+                description: Optional authentication and mesh-policy resources. GitKB CLI token acquisition is not configured by these fields.
+                type: object
+                properties:
+                  istioJwt:
+                    description: Istio ambient waypoint JWT enforcement for the GitKB Service. Requires an Istio ambient mesh and a valid issuer/JWKS configuration.
+                    type: object
+                    properties:
+                      enabled:
+                        description: Render ambient namespace labels, service waypoint labels, a waypoint Gateway, RequestAuthentication, and AuthorizationPolicy.
+                        type: boolean
+                        default: false
+                      issuer:
+                        description: Expected JWT issuer, for example https://auth.ops.com.ai.
+                        type: string
+                      jwksUri:
+                        description: JWKS URI for the issuer. If omitted, Istio may use OIDC discovery for issuers that support it.
+                        type: string
+                      audiences:
+                        description: Optional JWT audiences accepted by Istio, for example a Zitadel project ID.
+                        type: array
+                        items:
+                          type: string
+                      requestPrincipals:
+                        description: Request principals allowed by the AuthorizationPolicy. Defaults to ["*"] to require any valid JWT.
+                        type: array
+                        items:
+                          type: string
+                      waypoint:
+                        description: Istio waypoint settings.
+                        type: object
+                        properties:
+                          name:
+                            description: Waypoint Gateway name. Defaults to <releaseName>-waypoint.
+                            type: string
+                          gatewayClassName:
+                            description: GatewayClass used for the waypoint. Defaults to istio-waypoint.
+                            type: string
+                            default: istio-waypoint
               values:
                 description: Helm values merged over stack defaults for the gitkb-server chart.
                 type: object
@@ -288,5 +327,23 @@ spec:
                     type: boolean
                   certificateReady:
                     type: boolean
+              auth:
+                type: object
+                properties:
+                  istioJwt:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                      rendered:
+                        type: boolean
+                      issuer:
+                        type: string
+                      waypointReady:
+                        type: boolean
+                      requestAuthenticationReady:
+                        type: boolean
+                      authorizationPolicyReady:
+                        type: boolean
         required:
         - spec

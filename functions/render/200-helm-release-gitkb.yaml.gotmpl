@@ -14,6 +14,9 @@
   "seed" $state.seed
   "persistence" $state.persistence
 }}
+{{- if $state.auth.istioJwt.rendered }}
+  {{- $chartDefaults = mergeOverwrite $chartDefaults (dict "service" (dict "labels" $state.auth.istioJwt.serviceLabels)) }}
+{{- end }}
 
 ---
 apiVersion: helm.m.crossplane.io/v1beta1

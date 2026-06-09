@@ -2,8 +2,7 @@
 #
 # Initialize $state with spec defaults.
 #
-# This pass intentionally exposes GitKB without auth when exposure.enabled is
-# true. Gateway/OIDC policy is deferred to a later pass.
+# Gateway exposure remains authless unless auth.istioJwt is explicitly enabled.
 
 {{- $xr := getCompositeResource . }}
 {{- $spec := $xr.spec | default dict }}
@@ -13,7 +12,7 @@
 {{- $clusterName := $spec.clusterName | default $name }}
 {{- $namespace := $spec.namespace | default "gitkb" }}
 {{- $releaseName := $spec.releaseName | default $name }}
-{{- $chartVersion := $spec.chartVersion | default "0.1.0" }}
+{{- $chartVersion := $spec.chartVersion | default "0.2.0" }}
 {{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
 
 {{- $defaultLabels := dict
@@ -82,6 +81,22 @@
 {{- $certSecretNamespace := $cert.secretNamespace | default ($gatewayRef.namespace | default $namespace) }}
 {{- $certIssuerRef := $cert.issuerRef | default dict }}
 
+{{- $auth := $spec.auth | default dict }}
+{{- $istioJwt := $auth.istioJwt | default dict }}
+{{- $istioJwtEnabled := false }}
+{{- if hasKey $istioJwt "enabled" }}{{- $istioJwtEnabled = $istioJwt.enabled }}{{- end }}
+{{- $waypoint := $istioJwt.waypoint | default dict }}
+{{- $waypointName := $waypoint.name | default (printf "%s-waypoint" $releaseName) }}
+{{- $istioJwtIssuer := $istioJwt.issuer | default "" }}
+{{- $istioJwtRendered := false }}
+{{- if and $istioJwtEnabled $istioJwtIssuer }}
+  {{- $istioJwtRendered = true }}
+{{- end }}
+{{- $namespaceLabels := $labels }}
+{{- if $istioJwtRendered }}
+  {{- $namespaceLabels = mergeOverwrite (dict) $labels (dict "istio.io/dataplane-mode" "ambient") }}
+{{- end }}
+
 {{- $state := dict
   "name" $name
   "kind" $xr.kind
@@ -93,6 +108,7 @@
   "chartVersion" $chartVersion
   "managementPolicies" $managementPolicies
   "labels" $labels
+  "namespaceLabels" $namespaceLabels
   "helmProviderConfigRef" $helmProviderConfigRef
   "kubernetesProviderConfigRef" $kubernetesProviderConfigRef
   "serviceName" $serviceName
@@ -153,6 +169,26 @@
       "issuerRef" (dict
         "name" ($certIssuerRef.name | default "")
         "kind" ($certIssuerRef.kind | default "ClusterIssuer")
+      )
+    )
+  )
+  "auth" (dict
+    "istioJwt" (dict
+      "enabled" $istioJwtEnabled
+      "rendered" $istioJwtRendered
+      "issuer" $istioJwtIssuer
+      "jwksUri" ($istioJwt.jwksUri | default "")
+      "audiences" ($istioJwt.audiences | default (list))
+      "requestPrincipals" ($istioJwt.requestPrincipals | default (list "*"))
+      "waypoint" (dict
+        "name" $waypointName
+        "gatewayClassName" ($waypoint.gatewayClassName | default "istio-waypoint")
+      )
+      "requestAuthenticationName" (printf "%s-jwt" $releaseName)
+      "authorizationPolicyName" (printf "%s-require-jwt" $releaseName)
+      "serviceLabels" (dict
+        "istio.io/use-waypoint" $waypointName
+        "istio.io/ingress-use-waypoint" "true"
       )
     )
   )

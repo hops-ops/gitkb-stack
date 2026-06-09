@@ -27,7 +27,8 @@ jobs:
       examples: |
         [
           { "example": "examples/gitkbs/minimal.yaml" },
-          { "example": "examples/gitkbs/standard.yaml" }
+          { "example": "examples/gitkbs/standard.yaml" },
+          { "example": "examples/gitkbs/with-istio-jwt.yaml" }
         ]
       api_path: apis/gitkbs
       error_on_missing_schemas: true

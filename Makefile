@@ -1,11 +1,11 @@
 SHELL := /bin/bash
 
 PACKAGE ?= gitkb-stack
-XRD_DIR := apis/gitkbstacks
+XRD_DIR := apis/gitkbs
 COMPOSITION := $(XRD_DIR)/composition.yaml
 DEFINITION := $(XRD_DIR)/definition.yaml
 CONFIGURATION := $(XRD_DIR)/configuration.yaml
-EXAMPLE_DEFAULT := examples/gitkbstacks/standard.yaml
+EXAMPLE_DEFAULT := examples/gitkbs/standard.yaml
 RENDER_TESTS := $(wildcard tests/test-*)
 E2E_TESTS := $(wildcard tests/e2etest-*)
 
@@ -22,8 +22,8 @@ generate-configuration:
 	hops validate generate-configuration --path . --api-path "$(XRD_DIR)"
 
 EXAMPLES := \
-    examples/gitkbstacks/minimal.yaml:: \
-    examples/gitkbstacks/standard.yaml::
+    examples/gitkbs/minimal.yaml:: \
+    examples/gitkbs/standard.yaml::
 
 render\:all:
 	@tmpdir=$$(mktemp -d); \
@@ -93,11 +93,11 @@ render: ; @$(MAKE) 'render:all'
 validate: ; @$(MAKE) generate-configuration 'validate:all'
 
 render\:%:
-	@example="examples/gitkbstacks/$*.yaml"; \
+	@example="examples/gitkbs/$*.yaml"; \
 	up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example
 
 validate\:%: generate-configuration
-	@example="examples/gitkbstacks/$*.yaml"; \
+	@example="examples/gitkbs/$*.yaml"; \
 	up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example \
 		--include-full-xr --quiet | \
 		crossplane beta validate $(XRD_DIR) --error-on-missing-schemas -

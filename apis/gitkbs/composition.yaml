@@ -1,11 +1,11 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: gitkbstacks.hops.ops.com.ai
+  name: gitkbs.hops.ops.com.ai
 spec:
   compositeTypeRef:
     apiVersion: hops.ops.com.ai/v1alpha1
-    kind: GitKBStack
+    kind: GitKB
   mode: Pipeline
   pipeline:
   - functionRef:

@@ -30,10 +30,10 @@ jobs:
     with:
       examples: |
         [
-          { "example": "examples/gitkbstacks/minimal.yaml" },
-          { "example": "examples/gitkbstacks/standard.yaml" }
+          { "example": "examples/gitkbs/minimal.yaml" },
+          { "example": "examples/gitkbs/standard.yaml" }
         ]
-      api_path: apis/gitkbstacks
+      api_path: apis/gitkbs
       error_on_missing_schemas: true
 
   test:

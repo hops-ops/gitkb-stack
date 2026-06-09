@@ -19,7 +19,8 @@ status:
     port: {{ $s.service.port }}
   exposure:
     enabled: {{ $s.exposure.enabled }}
-    hostname: {{ $s.exposure.hostname | quote }}
+    domain: {{ $s.exposure.domain | quote }}
+    pathPrefix: {{ $s.exposure.pathPrefix | quote }}
     url: {{ $s.exposure.url | quote }}
     dnsEnabled: {{ $s.exposure.dnsEnabled }}
     certificateEnabled: {{ $s.exposure.certificateEnabled }}

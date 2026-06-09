@@ -16,22 +16,28 @@ spec:
     kind: Provider
     package: xpkg.crossplane.io/crossplane-contrib/provider-kubernetes
     version: '>=v1'
-  description: GitKBStack serves a GitKB knowledge base from the gitkb-server chart
-    and optionally exposes it through Gateway API with TLS certificate and ExternalDNS
+  description: GitKB serves a GitKB knowledge base from the gitkb-server chart and
+    optionally exposes it through Gateway API with TLS certificate and ExternalDNS
     wiring.
   license: Apache-2.0
   maintainer: Patrick Lee Scott <pat@patscott.io>
   readme: |
     # gitkb-stack
 
-    Installs GitKB into Kubernetes through the `gitkb-server` Helm chart.
-    The stack owns namespace creation, chart installation, optional Gateway
-    API HTTPRoute exposure, optional cert-manager Certificate provisioning,
-    and ExternalDNS annotations. When the stack provisions a certificate, the
-    Gateway owner must configure the listener to reference the generated Secret.
+    GitKB installs a GitKB sync server into Kubernetes through the
+    `gitkb-server` Helm chart from `https://hops-ops.github.io/gitkb-server-chart`.
 
-    This first exposure pass is intentionally unauthenticated. Use it only
-    on internal networks or behind a trusted Gateway until the OIDC policy
-    pass lands.
+    A `GitKB` claim owns namespace creation, chart installation, optional
+    Gateway API HTTPRoute exposure, optional cert-manager Certificate
+    provisioning, and ExternalDNS annotations. `spec.exposure.domain` is the
+    public domain, while `spec.gitkb.org` and `spec.gitkb.repo` derive the
+    default public path `/<org>/<repo>`, for example:
+
+    `https://kb.ops.com.ai/hops-ops/hops`
+
+    The HTTPRoute strips that prefix before forwarding traffic to
+    `git-kb serve`, so many GitKB repos can share one Gateway domain. This
+    pass is intentionally unauthenticated; add Gateway/OIDC policy before
+    exposing writable GitKB sync traffic beyond trusted networks.
   repository: ghcr.io/hops-ops/gitkb-stack
   source: github.com/hops-ops/gitkb-stack

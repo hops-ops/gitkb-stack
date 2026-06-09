@@ -23,18 +23,20 @@
 {{- $labels := mergeOverwrite (dict) $defaultLabels ($spec.labels | default dict) }}
 
 {{- $providerConfigRefs := $spec.providerConfigRefs | default dict }}
-{{- $helmProviderConfigRef := ($providerConfigRefs.helm | default ($spec.helmProviderConfigRef | default dict)) }}
+{{- $helmProviderConfigRef := $providerConfigRefs.helm | default dict }}
 {{- $helmProviderConfigRef = dict
   "name" ($helmProviderConfigRef.name | default $clusterName)
   "kind" ($helmProviderConfigRef.kind | default "ProviderConfig")
 }}
-{{- $kubernetesProviderConfigRef := ($providerConfigRefs.kubernetes | default ($spec.kubernetesProviderConfigRef | default dict)) }}
+{{- $kubernetesProviderConfigRef := $providerConfigRefs.kubernetes | default dict }}
 {{- $kubernetesProviderConfigRef = dict
   "name" ($kubernetesProviderConfigRef.name | default $clusterName)
   "kind" ($kubernetesProviderConfigRef.kind | default "ProviderConfig")
 }}
 
 {{- $gitkb := $spec.gitkb | default dict }}
+{{- $gitkbOrg := $gitkb.org | default "hops-ops" }}
+{{- $gitkbRepo := $gitkb.repo | default $name }}
 {{- $image := $spec.image | default dict }}
 {{- $server := $spec.server | default dict }}
 {{- $persistence := $spec.persistence | default dict }}
@@ -58,9 +60,12 @@
 {{- $expEnabled := false }}
 {{- if hasKey $exp "enabled" }}{{- $expEnabled = $exp.enabled }}{{- end }}
 {{- $expDomain := $exp.domain | default "" }}
-{{- $expHostname := $exp.hostname | default "" }}
-{{- if and (not $expHostname) $expDomain }}
-  {{- $expHostname = printf "kb.%s" $expDomain }}
+{{- $expPathPrefix := $exp.pathPrefix | default (printf "/%s/%s" $gitkbOrg $gitkbRepo) }}
+{{- if not (hasPrefix "/" $expPathPrefix) }}
+  {{- $expPathPrefix = printf "/%s" $expPathPrefix }}
+{{- end }}
+{{- if and (ne $expPathPrefix "/") (hasSuffix "/" $expPathPrefix) }}
+  {{- $expPathPrefix = trimSuffix "/" $expPathPrefix }}
 {{- end }}
 {{- $expServiceName := $exp.serviceName | default $serviceName }}
 {{- $gatewayRef := $exp.gatewayRef | default dict }}
@@ -68,7 +73,6 @@
 {{- $dns := $exp.dns | default dict }}
 {{- $dnsEnabled := $expEnabled }}
 {{- if hasKey $dns "enabled" }}{{- $dnsEnabled = $dns.enabled }}{{- end }}
-{{- $dnsHostname := $dns.hostname | default $expHostname }}
 {{- $dnsAnnotations := $dns.annotations | default dict }}
 
 {{- $cert := $exp.certificate | default dict }}
@@ -93,8 +97,9 @@
   "kubernetesProviderConfigRef" $kubernetesProviderConfigRef
   "serviceName" $serviceName
   "gitkb" (dict
-    "org" ($gitkb.org | default "hops-ops")
-    "instance" ($gitkb.instance | default "knowledge-base")
+    "org" $gitkbOrg
+    "repo" $gitkbRepo
+    "instance" $gitkbRepo
     "name" ($gitkb.name | default "GitKB Knowledge Base")
     "root" ($gitkb.root | default "/data/kb")
   )
@@ -127,7 +132,8 @@
   )
   "exposure" (dict
     "enabled" $expEnabled
-    "hostname" $expHostname
+    "domain" $expDomain
+    "pathPrefix" $expPathPrefix
     "serviceName" $expServiceName
     "gatewayRef" (dict
       "name" ($gatewayRef.name | default "")
@@ -136,7 +142,6 @@
     )
     "dns" (dict
       "enabled" $dnsEnabled
-      "hostname" $dnsHostname
       "target" ($dns.target | default "")
       "ttl" ($dns.ttl | default "")
       "annotations" $dnsAnnotations

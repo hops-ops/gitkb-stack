@@ -1,5 +1,5 @@
 apiVersion: hops.ops.com.ai/v1alpha1
-kind: GitKBStack
+kind: GitKB
 metadata:
   name: platform-kb
   namespace: default
@@ -8,14 +8,14 @@ spec:
   namespace: gitkb
   gitkb:
     org: hops-ops
-    instance: hops
+    repo: hops
     name: Hops Knowledge Base
   persistence:
     enabled: true
     size: 10Gi
   exposure:
     enabled: true
-    domain: ops.com.ai
+    domain: kb.ops.com.ai
     gatewayRef:
       name: platform
       namespace: istio-ingress

@@ -7,7 +7,7 @@ _ready_conditions = [
 
 _base_xr = {
     apiVersion = "hops.ops.com.ai/v1alpha1"
-    kind = "GitKBStack"
+    kind = "GitKB"
     metadata = {
         name = "platform-kb"
         namespace = "default"
@@ -21,8 +21,8 @@ items = [
     metav1alpha1.CompositionTest {
         metadata.name = "minimal-renders-namespace-and-helm-release"
         spec = {
-            compositionPath = "apis/gitkbstacks/composition.yaml"
-            xrdPath = "apis/gitkbstacks/definition.yaml"
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
             timeoutSeconds = 60
             validate = False
             xr = _base_xr
@@ -68,14 +68,19 @@ items = [
     metav1alpha1.CompositionTest {
         metadata.name = "gateway-dns-and-tls-render-when-exposure-enabled"
         spec = {
-            compositionPath = "apis/gitkbstacks/composition.yaml"
-            xrdPath = "apis/gitkbstacks/definition.yaml"
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
             timeoutSeconds = 60
             validate = False
             xr = _base_xr | {
+                spec.gitkb = {
+                    org = "hops-ops"
+                    repo = "hops"
+                    name = "Hops Knowledge Base"
+                }
                 spec.exposure = {
                     enabled = True
-                    domain = "ops.com.ai"
+                    domain = "kb.ops.com.ai"
                     gatewayRef = {
                         name = "platform"
                         namespace = "istio-ingress"
@@ -141,6 +146,19 @@ items = [
                             }]
                             hostnames = ["kb.ops.com.ai"]
                             rules = [{
+                                matches = [{
+                                    path = {
+                                        type = "PathPrefix"
+                                        value = "/hops-ops/hops"
+                                    }
+                                }]
+                                filters = [{
+                                    type = "URLRewrite"
+                                    urlRewrite.path = {
+                                        type = "ReplacePrefixMatch"
+                                        replacePrefixMatch = "/"
+                                    }
+                                }]
                                 backendRefs = [{
                                     name = "platform-kb-gitkb-server"
                                     namespace = "gitkb"
@@ -157,14 +175,19 @@ items = [
     metav1alpha1.CompositionTest {
         metadata.name = "observed-ready-renders-usages-and-ready-status"
         spec = {
-            compositionPath = "apis/gitkbstacks/composition.yaml"
-            xrdPath = "apis/gitkbstacks/definition.yaml"
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
             timeoutSeconds = 60
             validate = False
             xr = _base_xr | {
+                spec.gitkb = {
+                    org = "hops-ops"
+                    repo = "hops"
+                    name = "Hops Knowledge Base"
+                }
                 spec.exposure = {
                     enabled = True
-                    domain = "ops.com.ai"
+                    domain = "kb.ops.com.ai"
                     gatewayRef = {
                         name = "platform"
                         namespace = "istio-ingress"
@@ -278,11 +301,13 @@ items = [
                 }
                 {
                     apiVersion = "hops.ops.com.ai/v1alpha1"
-                    kind = "GitKBStack"
+                    kind = "GitKB"
                     metadata.name = "platform-kb"
                     status = {
                         ready = True
                         exposure = {
+                            pathPrefix = "/hops-ops/hops"
+                            url = "https://kb.ops.com.ai/hops-ops/hops"
                             routeReady = True
                             certificateReady = True
                         }
@@ -293,10 +318,61 @@ items = [
     }
 
     metav1alpha1.CompositionTest {
+        metadata.name = "root-path-prefix-keeps-root-route-without-rewrite"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.exposure = {
+                    enabled = True
+                    domain = "kb.ops.com.ai"
+                    pathPrefix = "/"
+                    gatewayRef = {
+                        name = "platform"
+                        namespace = "istio-ingress"
+                        sectionName = "https"
+                    }
+                }
+            }
+            assertResources = [
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata.name = "platform-kb-exposure-httproute"
+                    spec.forProvider.manifest.spec.rules = [{
+                        matches = [{
+                            path = {
+                                type = "PathPrefix"
+                                value = "/"
+                            }
+                        }]
+                        backendRefs = [{
+                            name = "platform-kb-gitkb-server"
+                            namespace = "gitkb"
+                            port = 8080
+                        }]
+                    }]
+                }
+                {
+                    apiVersion = "hops.ops.com.ai/v1alpha1"
+                    kind = "GitKB"
+                    metadata.name = "platform-kb"
+                    status.exposure = {
+                        pathPrefix = "/"
+                        url = "https://kb.ops.com.ai"
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
         metadata.name = "provider-config-refs-and-values-merge"
         spec = {
-            compositionPath = "apis/gitkbstacks/composition.yaml"
-            xrdPath = "apis/gitkbstacks/definition.yaml"
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
             timeoutSeconds = 60
             validate = False
             xr = _base_xr | {

@@ -19,8 +19,8 @@
 {{- end }}
 
 {{- $exp := $state.exposure }}
-{{- $routeRendered := and $exp.enabled $exp.hostname $exp.gatewayRef.name }}
-{{- $certificateRendered := and $exp.enabled $exp.certificate.enabled $exp.hostname }}
+{{- $routeRendered := and $exp.enabled $exp.domain $exp.gatewayRef.name }}
+{{- $certificateRendered := and $exp.enabled $exp.certificate.enabled $exp.domain }}
 {{- $certificateUsesGitkbNamespace := and $certificateRendered (eq $exp.certificate.secretNamespace $state.namespace) }}
 
 {{- $namespaceReady := get $checkReady "namespace" }}
@@ -58,8 +58,11 @@
 {{- $ready := and $namespaceReady $releaseReady $routeReadyForOverall $certificateReadyForOverall $gitkbNamespaceUsageReady $httprouteGitkbUsageReady $httprouteNamespaceUsageReady $certificateNamespaceUsageReady }}
 
 {{- $exposureURL := "" }}
-{{- if and $exp.enabled $exp.hostname }}
-  {{- $exposureURL = printf "https://%s" $exp.hostname }}
+{{- if and $exp.enabled $exp.domain }}
+  {{- $exposureURL = printf "https://%s" $exp.domain }}
+  {{- if ne $exp.pathPrefix "/" }}
+    {{- $exposureURL = printf "%s%s" $exposureURL $exp.pathPrefix }}
+  {{- end }}
 {{- end }}
 
 {{- $state = set $state "observed" (dict
@@ -88,7 +91,8 @@
   )
   "exposure" (dict
     "enabled" $exp.enabled
-    "hostname" $exp.hostname
+    "domain" $exp.domain
+    "pathPrefix" $exp.pathPrefix
     "url" $exposureURL
     "dnsEnabled" $exp.dns.enabled
     "certificateEnabled" $exp.certificate.enabled

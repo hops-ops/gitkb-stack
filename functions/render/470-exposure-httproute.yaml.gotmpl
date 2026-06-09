@@ -2,12 +2,12 @@
 #
 # Optional unauthenticated Gateway API HTTPRoute for GitKB sync traffic.
 # ExternalDNS integration is annotation-based and intentionally lives on the
-# HTTPRoute so DNS follows the route hostname.
+# HTTPRoute so DNS follows the route domain.
 
 {{- $exp := $state.exposure }}
 {{- $dns := $exp.dns }}
 
-{{- if and $exp.enabled $exp.hostname $exp.gatewayRef.name }}
+{{- if and $exp.enabled $exp.domain $exp.gatewayRef.name }}
 ---
 apiVersion: kubernetes.m.crossplane.io/v1alpha1
 kind: Object
@@ -28,7 +28,7 @@ spec:
         labels: {{ $state.labels | toJson }}
         {{- if $dns.enabled }}
         annotations:
-          external-dns.alpha.kubernetes.io/hostname: {{ $dns.hostname | quote }}
+          external-dns.alpha.kubernetes.io/hostname: {{ $exp.domain | quote }}
           {{- if $dns.target }}
           external-dns.alpha.kubernetes.io/target: {{ $dns.target | quote }}
           {{- end }}
@@ -49,12 +49,20 @@ spec:
           sectionName: {{ $exp.gatewayRef.sectionName }}
           {{- end }}
         hostnames:
-        - {{ $exp.hostname | quote }}
+        - {{ $exp.domain | quote }}
         rules:
         - matches:
           - path:
               type: PathPrefix
-              value: /
+              value: {{ $exp.pathPrefix | quote }}
+          {{- if ne $exp.pathPrefix "/" }}
+          filters:
+          - type: URLRewrite
+            urlRewrite:
+              path:
+                type: ReplacePrefixMatch
+                replacePrefixMatch: /
+          {{- end }}
           backendRefs:
           - name: {{ $exp.serviceName }}
             namespace: {{ $state.namespace }}
@@ -64,7 +72,7 @@ spec:
     kind: {{ $state.kubernetesProviderConfigRef.kind }}
 {{- end }}
 
-{{- if and $exp.enabled $exp.hostname $exp.gatewayRef.name $state.observed.release.ready $state.observed.exposure.routeReady }}
+{{- if and $exp.enabled $exp.domain $exp.gatewayRef.name $state.observed.release.ready $state.observed.exposure.routeReady }}
 ---
 apiVersion: protection.crossplane.io/v1beta1
 kind: Usage
@@ -87,7 +95,7 @@ spec:
       name: {{ $state.name }}-exposure-httproute
 {{- end }}
 
-{{- if and $exp.enabled $exp.hostname $exp.gatewayRef.name $state.observed.namespace.ready $state.observed.exposure.routeReady }}
+{{- if and $exp.enabled $exp.domain $exp.gatewayRef.name $state.observed.namespace.ready $state.observed.exposure.routeReady }}
 ---
 apiVersion: protection.crossplane.io/v1beta1
 kind: Usage

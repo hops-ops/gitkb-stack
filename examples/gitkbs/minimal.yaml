@@ -1,5 +1,5 @@
 apiVersion: hops.ops.com.ai/v1alpha1
-kind: GitKBStack
+kind: GitKB
 metadata:
   name: gitkb
   namespace: default

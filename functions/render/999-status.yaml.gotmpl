@@ -26,3 +26,38 @@ status:
     certificateEnabled: {{ $s.exposure.certificateEnabled }}
     routeReady: {{ $s.exposure.routeReady }}
     certificateReady: {{ $s.exposure.certificateReady }}
+  auth:
+    oidcClient:
+      enabled: {{ $s.auth.oidcClient.enabled }}
+      rendered: {{ $s.auth.oidcClient.rendered }}
+      issuer: {{ $s.auth.oidcClient.issuer | quote }}
+      projectId: {{ $s.auth.oidcClient.projectId | quote }}
+      device:
+        applicationId: {{ $s.auth.oidcClient.device.applicationId | quote }}
+        clientSecretRef:
+          name: {{ $s.auth.oidcClient.device.clientSecretRef.name | quote }}
+          namespace: {{ $s.auth.oidcClient.device.clientSecretRef.namespace | quote }}
+          clientIdKey: {{ $s.auth.oidcClient.device.clientSecretRef.clientIdKey | quote }}
+          clientSecretKey: {{ $s.auth.oidcClient.device.clientSecretRef.clientSecretKey | quote }}
+        ready: {{ $s.auth.oidcClient.device.ready }}
+      machine:
+        clientId: {{ $s.auth.oidcClient.machine.clientId | quote }}
+        userId: {{ $s.auth.oidcClient.machine.userId | quote }}
+        clientSecretRef:
+          name: {{ $s.auth.oidcClient.machine.clientSecretRef.name | quote }}
+          namespace: {{ $s.auth.oidcClient.machine.clientSecretRef.namespace | quote }}
+          clientIdKey: {{ $s.auth.oidcClient.machine.clientSecretRef.clientIdKey | quote }}
+          clientSecretKey: {{ $s.auth.oidcClient.machine.clientSecretRef.clientSecretKey | quote }}
+        ready: {{ $s.auth.oidcClient.machine.ready }}
+      projectReady: {{ $s.auth.oidcClient.projectReady }}
+      roleReady: {{ $s.auth.oidcClient.roleReady }}
+      grantReady: {{ $s.auth.oidcClient.grantReady }}
+    istioJwt:
+      enabled: {{ $s.auth.istioJwt.enabled }}
+      rendered: {{ $s.auth.istioJwt.rendered }}
+      issuer: {{ $s.auth.istioJwt.issuer | quote }}
+      audiences:
+        {{- toYaml $s.auth.istioJwt.audiences | nindent 8 }}
+      waypointReady: {{ $s.auth.istioJwt.waypointReady }}
+      requestAuthenticationReady: {{ $s.auth.istioJwt.requestAuthenticationReady }}
+      authorizationPolicyReady: {{ $s.auth.istioJwt.authorizationPolicyReady }}

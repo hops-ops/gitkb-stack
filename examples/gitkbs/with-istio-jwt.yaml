@@ -1,0 +1,35 @@
+apiVersion: hops.ops.com.ai/v1alpha1
+kind: GitKB
+metadata:
+  name: platform-kb-auth
+  namespace: default
+spec:
+  clusterName: pat-local
+  namespace: gitkb
+  gitkb:
+    org: hops-ops
+    repo: hops
+    name: Hops Knowledge Base
+  exposure:
+    enabled: true
+    domain: kb.ops.com.ai
+    gatewayRef:
+      name: platform
+      namespace: istio-ingress
+      sectionName: https
+  auth:
+    oidcClient:
+      enabled: true
+      issuer: https://auth.ops.com.ai
+      jwksUri: https://auth.ops.com.ai/oauth/v2/keys
+      zitadelProviderConfigRef:
+        name: zitadel-tenant-stack
+        kind: ProviderConfig
+      zitadelOrgId: "373268222482392664"
+      projectName: gitkb
+      device:
+        applicationName: gitkb-cli
+      machine:
+        userName: gitkb-sync
+    istioJwt:
+      enabled: true

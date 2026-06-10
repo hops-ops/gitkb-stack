@@ -23,7 +23,8 @@ generate-configuration:
 
 EXAMPLES := \
     examples/gitkbs/minimal.yaml:: \
-    examples/gitkbs/standard.yaml::
+    examples/gitkbs/standard.yaml:: \
+    examples/gitkbs/with-istio-jwt.yaml::
 
 render\:all:
 	@tmpdir=$$(mktemp -d); \

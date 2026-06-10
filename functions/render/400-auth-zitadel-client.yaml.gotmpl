@@ -1,0 +1,246 @@
+# code: language=yaml
+#
+# Dedicated Zitadel identities for GitKB sync.
+#
+# Human CLI login uses a public native OIDC Application with the Device Code
+# grant. Automation uses a JWT MachineUser with a client secret for OAuth2
+# client_credentials. The Project ID is also the JWT audience Istio can
+# validate.
+
+{{- $oidc := $state.auth.oidcClient }}
+{{- $observedAuth := $state.observed.auth | default dict }}
+{{- $observedOidc := $observedAuth.oidcClient | default dict }}
+
+{{- if $oidc.rendered }}
+---
+apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: {{ $state.name }}-auth-zitadel-project
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    name: {{ $oidc.projectName | quote }}
+    hasProjectCheck: false
+    projectRoleAssertion: true
+    projectRoleCheck: false
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+---
+apiVersion: application.zitadel.m.crossplane.io/v1alpha1
+kind: Oidc
+metadata:
+  name: {{ $state.name }}-auth-zitadel-device-app
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-device-app" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    name: {{ $oidc.device.applicationName | quote }}
+    projectIdRef:
+      name: {{ $state.name }}-auth-zitadel-project
+    appType: OIDC_APP_TYPE_NATIVE
+    authMethodType: OIDC_AUTH_METHOD_TYPE_NONE
+    grantTypes:
+      - OIDC_GRANT_TYPE_DEVICE_CODE
+      - OIDC_GRANT_TYPE_REFRESH_TOKEN
+    redirectUris: {{ $oidc.device.redirectUris | toJson }}
+    responseTypes: {{ $oidc.device.responseTypes | toJson }}
+    accessTokenType: OIDC_TOKEN_TYPE_JWT
+    accessTokenRoleAssertion: true
+    idTokenRoleAssertion: true
+    idTokenUserinfoAssertion: true
+  writeConnectionSecretToRef:
+    name: {{ $oidc.device.clientSecretName }}
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+---
+apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+kind: Role
+metadata:
+  name: {{ $state.name }}-auth-zitadel-role
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-role" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    projectIdRef:
+      name: {{ $state.name }}-auth-zitadel-project
+    roleKey: {{ $oidc.roleKey | quote }}
+    displayName: GitKB Sync
+    group: gitkb
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+---
+apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+kind: MachineUser
+metadata:
+  name: {{ $state.name }}-auth-zitadel-machineuser
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-machineuser" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    userName: {{ $oidc.machine.userName | quote }}
+    name: GitKB Sync
+    description: ServiceUser for GitKB CLI sync client_credentials access.
+    accessTokenType: ACCESS_TOKEN_TYPE_JWT
+    withSecret: true
+  writeConnectionSecretToRef:
+    name: {{ $oidc.machine.clientSecretName }}
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+{{- if and $observedOidc.projectId $observedOidc.machineUserId }}
+---
+apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+kind: Grant
+metadata:
+  name: {{ $state.name }}-auth-zitadel-grant
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-grant" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    projectId: {{ $observedOidc.projectId | quote }}
+    userId: {{ $observedOidc.machineUserId | quote }}
+    roleKeys:
+    - {{ $oidc.roleKey | quote }}
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+{{- end }}
+
+{{- if and $observedOidc.projectReady $observedOidc.deviceReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-device-before-project
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-device-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Project
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-project
+  by:
+    apiVersion: application.zitadel.m.crossplane.io/v1alpha1
+    kind: Oidc
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-device-app
+{{- end }}
+
+{{- if and $observedOidc.projectReady $observedOidc.roleReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-role-before-project
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-role-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Project
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-project
+  by:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Role
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-role
+{{- end }}
+
+{{- if and $observedOidc.projectReady $observedOidc.grantReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-grant-before-project
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-grant-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Project
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-project
+  by:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: Grant
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-grant
+{{- end }}
+
+{{- if and $observedOidc.machineUserReady $observedOidc.grantReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-grant-before-machineuser
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-grant-machineuser" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: MachineUser
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-machineuser
+  by:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: Grant
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-grant
+{{- end }}
+
+{{- if and $observedOidc.roleReady $observedOidc.grantReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-grant-before-role
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-grant-role" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Role
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-role
+  by:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: Grant
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-grant
+{{- end }}
+{{- end }}

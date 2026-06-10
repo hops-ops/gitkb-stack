@@ -288,6 +288,95 @@ items = [
     }
 
     metav1alpha1.CompositionTest {
+        metadata.name = "istio-jwt-auth-enforces-service-labels-and-principal-default"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.values = {
+                    service.labels = {
+                        "app.kubernetes.io/custom" = "kept"
+                        "istio.io/use-waypoint" = "user-overridden"
+                        "istio.io/ingress-use-waypoint" = "false"
+                    }
+                }
+                spec.auth = {
+                    istioJwt = {
+                        enabled = True
+                        issuer = "https://auth.ops.com.ai"
+                        requestPrincipals = []
+                    }
+                }
+            }
+            assertResources = [
+                {
+                    apiVersion = "helm.m.crossplane.io/v1beta1"
+                    kind = "Release"
+                    metadata.name = "platform-kb"
+                    spec.forProvider.values.service.labels = {
+                        "app.kubernetes.io/custom" = "kept"
+                        "istio.io/use-waypoint" = "platform-kb-waypoint"
+                        "istio.io/ingress-use-waypoint" = "true"
+                    }
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata.name = "platform-kb-auth-authorizationpolicy"
+                    spec.forProvider.manifest.spec.rules = [{
+                        from = [{
+                            source.requestPrincipals = ["*"]
+                        }]
+                    }]
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
+        metadata.name = "istio-jwt-auth-enforces-service-labels-with-override-values"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.overrideAllValues = {
+                    service.labels = {
+                        "app.kubernetes.io/custom" = "kept"
+                        "istio.io/use-waypoint" = "user-overridden"
+                        "istio.io/ingress-use-waypoint" = "false"
+                    }
+                    server.port = 9090
+                }
+                spec.auth = {
+                    istioJwt = {
+                        enabled = True
+                        issuer = "https://auth.ops.com.ai"
+                    }
+                }
+            }
+            assertResources = [
+                {
+                    apiVersion = "helm.m.crossplane.io/v1beta1"
+                    kind = "Release"
+                    metadata.name = "platform-kb"
+                    spec.forProvider.values = {
+                        service.labels = {
+                            "app.kubernetes.io/custom" = "kept"
+                            "istio.io/use-waypoint" = "platform-kb-waypoint"
+                            "istio.io/ingress-use-waypoint" = "true"
+                        }
+                        server.port = 9090
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
         metadata.name = "oidc-client-renders-zitadel-identity"
         spec = {
             compositionPath = "apis/gitkbs/composition.yaml"

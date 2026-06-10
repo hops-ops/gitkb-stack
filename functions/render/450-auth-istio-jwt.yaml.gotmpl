@@ -7,6 +7,10 @@
 {{- $auth := $state.auth.istioJwt }}
 {{- $observedAuth := $state.observed.auth | default dict }}
 {{- $waypointLabels := mergeOverwrite (dict) $state.labels (dict "istio.io/waypoint-for" "service") }}
+{{- $requestPrincipals := $auth.requestPrincipals | default (list) }}
+{{- if eq (len $requestPrincipals) 0 }}
+  {{- $requestPrincipals = list "*" }}
+{{- end }}
 
 {{- if $auth.rendered }}
 ---
@@ -107,7 +111,7 @@ spec:
         - from:
           - source:
               requestPrincipals:
-              {{- range $principal := $auth.requestPrincipals }}
+              {{- range $principal := $requestPrincipals }}
               - {{ $principal | quote }}
               {{- end }}
   providerConfigRef:

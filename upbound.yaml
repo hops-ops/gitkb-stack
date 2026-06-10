@@ -41,10 +41,10 @@ spec:
     `https://kb.ops.com.ai/hops-ops/hops`
 
     The HTTPRoute strips that prefix before forwarding traffic to
-    `git-kb serve`, so many GitKB repos can share one Gateway domain. This
+    `git-kb serve`, so many GitKB repos can share one Gateway domain.
     For authenticated sync traffic, enable `auth.oidcClient` and
-    `auth.istioJwt` so GitKB gets its own Zitadel device-flow client for human
-    login, MachineUser client for automation, and Istio validates the shared
-    project audience.
+    `auth.istioJwt` so GitKB provisions its own Zitadel device-flow client for
+    human login and MachineUser client for automation, while Istio validates
+    the shared project audience.
   repository: ghcr.io/hops-ops/gitkb-stack
   source: github.com/hops-ops/gitkb-stack

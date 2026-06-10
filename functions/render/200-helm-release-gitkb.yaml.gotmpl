@@ -14,10 +14,6 @@
   "seed" $state.seed
   "persistence" $state.persistence
 }}
-{{- if $state.auth.istioJwt.rendered }}
-  {{- $chartDefaults = mergeOverwrite $chartDefaults (dict "service" (dict "labels" $state.auth.istioJwt.serviceLabels)) }}
-{{- end }}
-
 ---
 apiVersion: helm.m.crossplane.io/v1beta1
 kind: Release
@@ -36,10 +32,17 @@ spec:
     namespace: {{ $state.namespace }}
     wait: true
     {{- if $state.overrideAllValues }}
+    {{- $overrideValues := $state.overrideAllValues }}
+    {{- if $state.auth.istioJwt.rendered }}
+      {{- $overrideValues = mergeOverwrite $overrideValues (dict "service" (dict "labels" $state.auth.istioJwt.serviceLabels)) }}
+    {{- end }}
     values:
-      {{- toYaml $state.overrideAllValues | nindent 6 }}
+      {{- toYaml $overrideValues | nindent 6 }}
     {{- else }}
     {{- $merged := mergeOverwrite $chartDefaults $state.values }}
+    {{- if $state.auth.istioJwt.rendered }}
+      {{- $merged = mergeOverwrite $merged (dict "service" (dict "labels" $state.auth.istioJwt.serviceLabels)) }}
+    {{- end }}
     values:
       {{- toYaml $merged | nindent 6 }}
     {{- end }}

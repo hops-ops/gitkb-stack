@@ -34,7 +34,7 @@ spec:
     A `GitKB` claim owns namespace creation, chart installation, optional
     Gateway API HTTPRoute exposure, optional cert-manager Certificate
     provisioning, ExternalDNS annotations, and optional Zitadel
-    client-credentials auth. `spec.exposure.domain` is the public domain, while
+    OIDC auth. `spec.exposure.domain` is the public domain, while
     `spec.gitkb.org` and `spec.gitkb.repo` derive the default public path
     `/<org>/<repo>`, for example:
 
@@ -43,7 +43,8 @@ spec:
     The HTTPRoute strips that prefix before forwarding traffic to
     `git-kb serve`, so many GitKB repos can share one Gateway domain. This
     For authenticated sync traffic, enable `auth.oidcClient` and
-    `auth.istioJwt` so GitKB gets its own Zitadel MachineUser client and Istio
-    validates that client's project audience.
+    `auth.istioJwt` so GitKB gets its own Zitadel device-flow client for human
+    login, MachineUser client for automation, and Istio validates the shared
+    project audience.
   repository: ghcr.io/hops-ops/gitkb-stack
   source: github.com/hops-ops/gitkb-stack

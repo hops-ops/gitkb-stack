@@ -305,8 +305,13 @@ items = [
                             kind = "ProviderConfig"
                         }
                         zitadelOrgId = "org-123"
-                        projectName = "gitkb-sync"
-                        machineUserName = "gitkb-sync"
+                        projectName = "gitkb"
+                        device = {
+                            applicationName = "gitkb-cli"
+                        }
+                        machine = {
+                            userName = "gitkb-sync"
+                        }
                     }
                 }
             }
@@ -317,7 +322,7 @@ items = [
                     metadata.name = "platform-kb-auth-zitadel-project"
                     spec.forProvider = {
                         orgId = "org-123"
-                        name = "gitkb-sync"
+                        name = "gitkb"
                         hasProjectCheck = False
                         projectRoleAssertion = True
                         projectRoleCheck = False
@@ -340,6 +345,28 @@ items = [
                     }
                 }
                 {
+                    apiVersion = "application.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Oidc"
+                    metadata.name = "platform-kb-auth-zitadel-device-app"
+                    spec.forProvider = {
+                        name = "gitkb-cli"
+                        projectIdRef.name = "platform-kb-auth-zitadel-project"
+                        appType = "OIDC_APP_TYPE_NATIVE"
+                        authMethodType = "OIDC_AUTH_METHOD_TYPE_NONE"
+                        grantTypes = [
+                            "OIDC_GRANT_TYPE_DEVICE_CODE"
+                            "OIDC_GRANT_TYPE_REFRESH_TOKEN"
+                        ]
+                        redirectUris = ["http://localhost"]
+                        responseTypes = ["OIDC_RESPONSE_TYPE_CODE"]
+                        accessTokenType = "OIDC_TOKEN_TYPE_JWT"
+                        accessTokenRoleAssertion = True
+                        idTokenRoleAssertion = True
+                        idTokenUserinfoAssertion = True
+                    }
+                    spec.writeConnectionSecretToRef.name = "gitkb-cli-oidc-client"
+                }
+                {
                     apiVersion = "user.zitadel.m.crossplane.io/v1alpha1"
                     kind = "MachineUser"
                     metadata.name = "platform-kb-auth-zitadel-machineuser"
@@ -359,11 +386,21 @@ items = [
                         enabled = True
                         rendered = True
                         issuer = "https://auth.ops.com.ai"
-                        clientSecretRef = {
-                            name = "gitkb-sync-secret"
-                            namespace = "default"
-                            clientIdKey = "attribute.client_id"
-                            clientSecretKey = "attribute.client_secret"
+                        device = {
+                            clientSecretRef = {
+                                name = "gitkb-cli-oidc-client"
+                                namespace = "default"
+                                clientIdKey = "attribute.client_id"
+                                clientSecretKey = "attribute.client_secret"
+                            }
+                        }
+                        machine = {
+                            clientSecretRef = {
+                                name = "gitkb-sync-secret"
+                                namespace = "default"
+                                clientIdKey = "attribute.client_id"
+                                clientSecretKey = "attribute.client_secret"
+                            }
                         }
                     }
                 }
@@ -389,8 +426,13 @@ items = [
                             kind = "ProviderConfig"
                         }
                         zitadelOrgId = "org-123"
-                        projectName = "gitkb-sync"
-                        machineUserName = "gitkb-sync"
+                        projectName = "gitkb"
+                        device = {
+                            applicationName = "gitkb-cli"
+                        }
+                        machine = {
+                            userName = "gitkb-sync"
+                        }
                     }
                     istioJwt = {
                         enabled = True
@@ -418,6 +460,18 @@ items = [
                         annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-role"}
                     }
                     status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "application.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Oidc"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-device-app"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-device-app"}
+                    }
+                    status = {
+                        atProvider.id = "gitkb-cli-app-id"
+                        conditions = _ready_conditions
+                    }
                 }
                 {
                     apiVersion = "user.zitadel.m.crossplane.io/v1alpha1"
@@ -466,10 +520,17 @@ items = [
                             enabled = True
                             rendered = True
                             projectId = "gitkb-project-id"
-                            clientId = "gitkb-sync"
+                            device = {
+                                applicationId = "gitkb-cli-app-id"
+                                ready = True
+                            }
+                            machine = {
+                                clientId = "gitkb-sync"
+                                userId = "gitkb-user-id"
+                                ready = True
+                            }
                             projectReady = True
                             roleReady = True
-                            machineUserReady = True
                             grantReady = False
                         }
                         istioJwt = {

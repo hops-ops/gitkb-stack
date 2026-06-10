@@ -26,7 +26,10 @@ spec:
         name: zitadel-tenant-stack
         kind: ProviderConfig
       zitadelOrgId: "373268222482392664"
-      projectName: gitkb-sync
-      machineUserName: gitkb-sync
+      projectName: gitkb
+      device:
+        applicationName: gitkb-cli
+      machine:
+        userName: gitkb-sync
     istioJwt:
       enabled: true

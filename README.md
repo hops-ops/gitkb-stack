@@ -93,7 +93,9 @@ For Istio ambient clusters, enable a dedicated GitKB Zitadel client with
 `auth.oidcClient`, then enable service-level JWT enforcement with
 `auth.istioJwt`. This renders:
 
-- a GitKB-owned Zitadel Project, Role, MachineUser, and Grant
+- a GitKB-owned Zitadel Project
+- a native public OIDC Application for CLI device login
+- a Role, MachineUser, and Grant for automation sync
 - ambient enrollment on the GitKB namespace
 - waypoint labels on the chart-owned GitKB Service
 - an Istio waypoint `Gateway`
@@ -111,15 +113,20 @@ spec:
         name: zitadel-tenant-stack
         kind: ProviderConfig
       zitadelOrgId: "373268222482392664"
-      machineUserName: gitkb-sync
+      projectName: gitkb
+      device:
+        applicationName: gitkb-cli
+      machine:
+        userName: gitkb-sync
     istioJwt:
       enabled: true
 ```
 
 This protects the workload for requests that carry a valid bearer token issued
-for the GitKB Project audience. Configure the GitKB CLI remote with
-`status.auth.oidcClient.clientId`, the Project audience scope, and the secret
-referenced by `status.auth.oidcClient.clientSecretRef`.
+for the GitKB Project audience. Configure the GitKB CLI remote with the Project
+audience scope, the device-flow client ID from
+`status.auth.oidcClient.device.clientSecretRef`, and the machine credentials
+from `status.auth.oidcClient.machine.clientSecretRef`.
 
 ## Import Existing
 
@@ -146,13 +153,18 @@ url = "https://kb.ops.com.ai/hops-ops/hops"
 
 [sync.remotes.origin.auth]
 issuer = "https://auth.ops.com.ai"
-client_id = "gitkb-sync"
-client_secret_env = "GITKB_OIDC_CLIENT_SECRET"
 scopes = [
   "openid",
   "profile",
   "urn:zitadel:iam:org:project:id:<status.auth.oidcClient.projectId>:aud",
 ]
+
+[sync.remotes.origin.auth.device]
+client_id = "<client_id from status.auth.oidcClient.device.clientSecretRef>"
+
+[sync.remotes.origin.auth.machine]
+client_id = "gitkb-sync"
+client_secret_env = "GITKB_OIDC_CLIENT_SECRET"
 ```
 
 The server route strips `/hops-ops/hops` before forwarding traffic to `git-kb serve`, so the CLI talks to the normal GitKB endpoints under that public path.
@@ -169,7 +181,7 @@ The XR publishes the operational fields needed by downstream automation:
 - `status.exposure.url` - full public URL for the GitKB remote.
 - `status.exposure.routeReady` - composed HTTPRoute readiness.
 - `status.exposure.certificateReady` - composed Certificate readiness when enabled.
-- `status.auth.oidcClient` - GitKB-owned Zitadel client ID, Project audience, credential Secret reference, and readiness.
+- `status.auth.oidcClient` - GitKB-owned Zitadel Project audience, device-flow client Secret reference, machine credential Secret reference, and readiness.
 - `status.auth.istioJwt` - whether Istio JWT auth rendered and whether the waypoint and policies are ready.
 
 ## Composed Resources
@@ -179,6 +191,7 @@ The XR publishes the operational fields needed by downstream automation:
 - `kubernetes.m.crossplane.io/Object` HTTPRoute - optional Gateway API route when `exposure.enabled` is true.
 - `kubernetes.m.crossplane.io/Object` Certificate - optional cert-manager Certificate when `exposure.certificate.enabled` is true.
 - `project.zitadel.m.crossplane.io/Project` - optional GitKB Project when `auth.oidcClient.enabled` is true.
+- `application.zitadel.m.crossplane.io/Oidc` - optional native public OIDC app for CLI device login when `auth.oidcClient.enabled` is true.
 - `project.zitadel.m.crossplane.io/Role` - optional GitKB sync Role when `auth.oidcClient.enabled` is true.
 - `user.zitadel.m.crossplane.io/MachineUser` - optional GitKB OAuth2 client when `auth.oidcClient.enabled` is true.
 - `user.zitadel.m.crossplane.io/Grant` - optional Role grant to the GitKB MachineUser when `auth.oidcClient.enabled` is true.

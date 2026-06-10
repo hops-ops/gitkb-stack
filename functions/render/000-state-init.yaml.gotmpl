@@ -91,8 +91,12 @@
   "kind" ($oidcProviderConfigRef.kind | default "ProviderConfig")
 }}
 {{- $oidcOrgId := $oidcClient.zitadelOrgId | default "" }}
-{{- $oidcMachineUserName := $oidcClient.machineUserName | default (printf "%s-sync" $releaseName) }}
-{{- $oidcClientSecretName := $oidcClient.clientSecretName | default (printf "%s-secret" $oidcMachineUserName) }}
+{{- $oidcDevice := $oidcClient.device | default dict }}
+{{- $oidcMachine := $oidcClient.machine | default dict }}
+{{- $oidcDeviceApplicationName := $oidcDevice.applicationName | default (printf "%s-cli" $releaseName) }}
+{{- $oidcDeviceClientSecretName := $oidcDevice.clientSecretName | default (printf "%s-oidc-client" $oidcDeviceApplicationName) }}
+{{- $oidcMachineUserName := $oidcMachine.userName | default ($oidcClient.machineUserName | default (printf "%s-sync" $releaseName)) }}
+{{- $oidcMachineClientSecretName := $oidcMachine.clientSecretName | default ($oidcClient.clientSecretName | default (printf "%s-secret" $oidcMachineUserName)) }}
 {{- $oidcClientRendered := false }}
 {{- if and $oidcClientEnabled $oidcProviderConfigRef.name $oidcOrgId }}
   {{- $oidcClientRendered = true }}
@@ -201,10 +205,20 @@
       "zitadelOrgId" $oidcOrgId
       "projectName" ($oidcClient.projectName | default (printf "%s-gitkb" $releaseName))
       "roleKey" ($oidcClient.roleKey | default "gitkb:sync")
-      "machineUserName" $oidcMachineUserName
-      "clientSecretName" $oidcClientSecretName
-      "clientIdKey" "attribute.client_id"
-      "clientSecretKey" "attribute.client_secret"
+      "device" (dict
+        "applicationName" $oidcDeviceApplicationName
+        "clientSecretName" $oidcDeviceClientSecretName
+        "redirectUris" ($oidcDevice.redirectUris | default (list "http://localhost"))
+        "responseTypes" ($oidcDevice.responseTypes | default (list "OIDC_RESPONSE_TYPE_CODE"))
+        "clientIdKey" "attribute.client_id"
+        "clientSecretKey" "attribute.client_secret"
+      )
+      "machine" (dict
+        "userName" $oidcMachineUserName
+        "clientSecretName" $oidcMachineClientSecretName
+        "clientIdKey" "attribute.client_id"
+        "clientSecretKey" "attribute.client_secret"
+      )
     )
     "istioJwt" (dict
       "enabled" $istioJwtEnabled

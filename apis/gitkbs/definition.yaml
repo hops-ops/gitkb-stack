@@ -241,13 +241,12 @@ spec:
                 properties:
                   oidcClient:
                     description: |
-                      Dedicated Zitadel client-credentials identity for GitKB
-                      CLI sync. When enabled, the composition creates its own
-                      Zitadel Project, Role, MachineUser, and Grant. The
-                      MachineUser connection Secret contains
-                      `attribute.client_id` and `attribute.client_secret`;
-                      use those values for GitKB CLI OAuth2
-                      client_credentials authentication.
+                      Dedicated Zitadel identities for GitKB CLI sync. When
+                      enabled, the composition creates its own Zitadel Project,
+                      native OIDC device-flow Application, sync Role,
+                      MachineUser, and Grant. Human users authenticate through
+                      the device-flow Application; automation authenticates
+                      through the MachineUser client_credentials identity.
                     type: object
                     properties:
                       enabled:
@@ -261,7 +260,7 @@ spec:
                         description: JWKS URI for the issuer. If omitted, Istio may use OIDC discovery.
                         type: string
                       zitadelProviderConfigRef:
-                        description: Zitadel ProviderConfig used to provision the Project, Role, MachineUser, and Grant.
+                        description: Zitadel ProviderConfig used to provision the Project, device Application, Role, MachineUser, and Grant.
                         type: object
                         properties:
                           name:
@@ -270,7 +269,7 @@ spec:
                             type: string
                             default: ProviderConfig
                       zitadelOrgId:
-                        description: Zitadel Org ID that owns the GitKB Project and MachineUser.
+                        description: Zitadel Org ID that owns the GitKB Project, device Application, and MachineUser.
                         type: string
                       projectName:
                         description: Zitadel Project name. Defaults to <releaseName>-gitkb.
@@ -279,12 +278,36 @@ spec:
                         description: Zitadel Role key granted to the GitKB MachineUser.
                         type: string
                         default: gitkb:sync
-                      machineUserName:
-                        description: MachineUser username. This becomes the OAuth2 client_id. Defaults to <releaseName>-sync.
-                        type: string
-                      clientSecretName:
-                        description: Connection Secret name for client credentials. Defaults to <machineUserName>-secret.
-                        type: string
+                      device:
+                        description: Human device-flow OIDC Application settings.
+                        type: object
+                        properties:
+                          applicationName:
+                            description: Zitadel native OIDC Application name for GitKB CLI device login. Defaults to <releaseName>-cli.
+                            type: string
+                          clientSecretName:
+                            description: Connection Secret containing the generated device-flow client_id and client_secret. Defaults to <applicationName>-oidc-client.
+                            type: string
+                          redirectUris:
+                            description: Redirect URIs to set on the native OIDC Application. Defaults to ["http://localhost"] because the Zitadel provider requires at least one redirect URI even when device flow is used.
+                            type: array
+                            items:
+                              type: string
+                          responseTypes:
+                            description: Response types to set on the native OIDC Application. Defaults to ["OIDC_RESPONSE_TYPE_CODE"] because the Zitadel provider requires at least one response type even when device flow is used.
+                            type: array
+                            items:
+                              type: string
+                      machine:
+                        description: Automation MachineUser settings for client_credentials sync.
+                        type: object
+                        properties:
+                          userName:
+                            description: MachineUser username. This becomes the OAuth2 client_id. Defaults to <releaseName>-sync.
+                            type: string
+                          clientSecretName:
+                            description: Connection Secret name for client credentials. Defaults to <userName>-secret.
+                            type: string
                   istioJwt:
                     description: Istio ambient waypoint JWT enforcement for the GitKB Service. Requires an Istio ambient mesh and a valid issuer/JWKS configuration.
                     type: object
@@ -392,26 +415,54 @@ spec:
                       projectId:
                         description: Observed Zitadel Project ID. Use as the audience scope with urn:zitadel:iam:org:project:id:<projectId>:aud.
                         type: string
-                      clientId:
-                        description: Observed OAuth2 client_id for GitKB CLI client_credentials authentication.
-                        type: string
-                      clientSecretRef:
-                        description: Secret containing the GitKB OAuth2 client credentials.
+                      device:
+                        description: Observed human device-flow OIDC Application details.
                         type: object
                         properties:
-                          name:
+                          applicationId:
+                            description: Observed Zitadel Application ID.
                             type: string
-                          namespace:
+                          clientSecretRef:
+                            description: Secret containing the generated device-flow client_id and client_secret.
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                              clientIdKey:
+                                type: string
+                              clientSecretKey:
+                                type: string
+                          ready:
+                            type: boolean
+                      machine:
+                        description: Observed automation MachineUser client credentials.
+                        type: object
+                        properties:
+                          clientId:
+                            description: Observed OAuth2 client_id for GitKB CLI client_credentials authentication.
                             type: string
-                          clientIdKey:
+                          userId:
+                            description: Observed Zitadel MachineUser ID.
                             type: string
-                          clientSecretKey:
-                            type: string
+                          clientSecretRef:
+                            description: Secret containing the MachineUser client credentials.
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                              namespace:
+                                type: string
+                              clientIdKey:
+                                type: string
+                              clientSecretKey:
+                                type: string
+                          ready:
+                            type: boolean
                       projectReady:
                         type: boolean
                       roleReady:
-                        type: boolean
-                      machineUserReady:
                         type: boolean
                       grantReady:
                         type: boolean

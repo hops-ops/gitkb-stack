@@ -5,7 +5,7 @@
 {{- $observed := $.observed.resources | default dict }}
 
 {{- $checkReady := dict }}
-{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "auth-zitadel-project" "auth-zitadel-role" "auth-zitadel-machineuser" "auth-zitadel-grant" "auth-waypoint" "auth-requestauthentication" "auth-authorizationpolicy" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" "usage-auth-waypoint-namespace" "usage-auth-jwt-namespace" "usage-auth-policy-namespace" "usage-auth-jwt-gitkb" "usage-auth-policy-gitkb" }}
+{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "auth-zitadel-project" "auth-zitadel-device-app" "auth-zitadel-role" "auth-zitadel-machineuser" "auth-zitadel-grant" "auth-waypoint" "auth-requestauthentication" "auth-authorizationpolicy" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" "usage-auth-waypoint-namespace" "usage-auth-jwt-namespace" "usage-auth-policy-namespace" "usage-auth-jwt-gitkb" "usage-auth-policy-gitkb" }}
   {{- $entry := get $observed $key | default dict }}
   {{- $resource := $entry.resource | default dict }}
   {{- $status := $resource.status | default dict }}
@@ -31,12 +31,18 @@
 {{- $oidcProjectAtProvider := $oidcProjectStatus.atProvider | default dict }}
 {{- $oidcProjectId := $oidcProjectAtProvider.id | default "" }}
 
+{{- $oidcDeviceEntry := get $observed "auth-zitadel-device-app" | default dict }}
+{{- $oidcDeviceResource := $oidcDeviceEntry.resource | default dict }}
+{{- $oidcDeviceStatus := $oidcDeviceResource.status | default dict }}
+{{- $oidcDeviceAtProvider := $oidcDeviceStatus.atProvider | default dict }}
+{{- $oidcDeviceApplicationId := $oidcDeviceAtProvider.id | default "" }}
+
 {{- $oidcMachineUserEntry := get $observed "auth-zitadel-machineuser" | default dict }}
 {{- $oidcMachineUserResource := $oidcMachineUserEntry.resource | default dict }}
 {{- $oidcMachineUserStatus := $oidcMachineUserResource.status | default dict }}
 {{- $oidcMachineUserAtProvider := $oidcMachineUserStatus.atProvider | default dict }}
 {{- $oidcMachineUserId := $oidcMachineUserAtProvider.id | default ($oidcMachineUserAtProvider.userId | default "") }}
-{{- $oidcClientId := $oidcMachineUserAtProvider.userName | default "" }}
+{{- $oidcMachineClientId := $oidcMachineUserAtProvider.userName | default "" }}
 
 {{- $namespaceReady := get $checkReady "namespace" }}
 {{- $releaseReady := get $checkReady "helm-release-gitkb" }}
@@ -54,6 +60,7 @@
 {{- end }}
 
 {{- $oidcProjectReady := false }}
+{{- $oidcDeviceReady := false }}
 {{- $oidcRoleReady := false }}
 {{- $oidcMachineUserReady := false }}
 {{- $oidcGrantReady := false }}
@@ -62,10 +69,11 @@
   {{- $oidcReadyForOverall = false }}
   {{- if $oidcClient.rendered }}
     {{- $oidcProjectReady = get $checkReady "auth-zitadel-project" }}
+    {{- $oidcDeviceReady = get $checkReady "auth-zitadel-device-app" }}
     {{- $oidcRoleReady = get $checkReady "auth-zitadel-role" }}
     {{- $oidcMachineUserReady = get $checkReady "auth-zitadel-machineuser" }}
     {{- $oidcGrantReady = get $checkReady "auth-zitadel-grant" }}
-    {{- $oidcReadyForOverall = and $oidcProjectReady $oidcRoleReady $oidcMachineUserReady $oidcGrantReady }}
+    {{- $oidcReadyForOverall = and $oidcProjectReady $oidcDeviceReady $oidcRoleReady $oidcMachineUserReady $oidcGrantReady }}
   {{- end }}
 {{- end }}
 
@@ -162,12 +170,14 @@
   "auth" (dict
     "oidcClient" (dict
       "projectReady" $oidcProjectReady
+      "deviceReady" $oidcDeviceReady
       "roleReady" $oidcRoleReady
       "machineUserReady" $oidcMachineUserReady
       "grantReady" $oidcGrantReady
       "projectId" $oidcProjectId
+      "deviceApplicationId" $oidcDeviceApplicationId
       "machineUserId" $oidcMachineUserId
-      "clientId" $oidcClientId
+      "machineClientId" $oidcMachineClientId
     )
     "waypointReady" $authWaypointReady
     "requestAuthenticationReady" $authRequestAuthenticationReady
@@ -208,16 +218,29 @@
       "rendered" $oidcClient.rendered
       "issuer" $oidcClient.issuer
       "projectId" $oidcProjectId
-      "clientId" $oidcClientId
-      "clientSecretRef" (dict
-        "name" $oidcClient.clientSecretName
-        "namespace" $state.xrNamespace
-        "clientIdKey" $oidcClient.clientIdKey
-        "clientSecretKey" $oidcClient.clientSecretKey
+      "device" (dict
+        "applicationId" $oidcDeviceApplicationId
+        "clientSecretRef" (dict
+          "name" $oidcClient.device.clientSecretName
+          "namespace" $state.xrNamespace
+          "clientIdKey" $oidcClient.device.clientIdKey
+          "clientSecretKey" $oidcClient.device.clientSecretKey
+        )
+        "ready" $oidcDeviceReady
+      )
+      "machine" (dict
+        "clientId" $oidcMachineClientId
+        "userId" $oidcMachineUserId
+        "clientSecretRef" (dict
+          "name" $oidcClient.machine.clientSecretName
+          "namespace" $state.xrNamespace
+          "clientIdKey" $oidcClient.machine.clientIdKey
+          "clientSecretKey" $oidcClient.machine.clientSecretKey
+        )
+        "ready" $oidcMachineUserReady
       )
       "projectReady" $oidcProjectReady
       "roleReady" $oidcRoleReady
-      "machineUserReady" $oidcMachineUserReady
       "grantReady" $oidcGrantReady
     )
     "istioJwt" (dict

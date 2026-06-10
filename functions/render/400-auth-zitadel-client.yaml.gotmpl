@@ -1,10 +1,11 @@
 # code: language=yaml
 #
-# Dedicated Zitadel client-credentials identity for GitKB sync.
+# Dedicated Zitadel identities for GitKB sync.
 #
-# The CLI uses OAuth2 client_credentials. In this Zitadel install the
-# working primitive for that flow is a JWT MachineUser with a client secret.
-# The Project ID is also the JWT audience Istio can validate.
+# Human CLI login uses a public native OIDC Application with the Device Code
+# grant. Automation uses a JWT MachineUser with a client secret for OAuth2
+# client_credentials. The Project ID is also the JWT audience Istio can
+# validate.
 
 {{- $oidc := $state.auth.oidcClient }}
 {{- $observedAuth := $state.observed.auth | default dict }}
@@ -27,6 +28,37 @@ spec:
     hasProjectCheck: false
     projectRoleAssertion: true
     projectRoleCheck: false
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+---
+apiVersion: application.zitadel.m.crossplane.io/v1alpha1
+kind: Oidc
+metadata:
+  name: {{ $state.name }}-auth-zitadel-device-app
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-device-app" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    name: {{ $oidc.device.applicationName | quote }}
+    projectIdRef:
+      name: {{ $state.name }}-auth-zitadel-project
+    appType: OIDC_APP_TYPE_NATIVE
+    authMethodType: OIDC_AUTH_METHOD_TYPE_NONE
+    grantTypes:
+      - OIDC_GRANT_TYPE_DEVICE_CODE
+      - OIDC_GRANT_TYPE_REFRESH_TOKEN
+    redirectUris: {{ $oidc.device.redirectUris | toJson }}
+    responseTypes: {{ $oidc.device.responseTypes | toJson }}
+    accessTokenType: OIDC_TOKEN_TYPE_JWT
+    accessTokenRoleAssertion: true
+    idTokenRoleAssertion: true
+    idTokenUserinfoAssertion: true
+  writeConnectionSecretToRef:
+    name: {{ $oidc.device.clientSecretName }}
   providerConfigRef:
     name: {{ $oidc.zitadelProviderConfigRef.name }}
     kind: {{ $oidc.zitadelProviderConfigRef.kind }}
@@ -64,13 +96,13 @@ spec:
   managementPolicies: {{ $state.managementPolicies | toJson }}
   forProvider:
     orgId: {{ $oidc.zitadelOrgId | quote }}
-    userName: {{ $oidc.machineUserName | quote }}
+    userName: {{ $oidc.machine.userName | quote }}
     name: GitKB Sync
     description: ServiceUser for GitKB CLI sync client_credentials access.
     accessTokenType: ACCESS_TOKEN_TYPE_JWT
     withSecret: true
   writeConnectionSecretToRef:
-    name: {{ $oidc.clientSecretName }}
+    name: {{ $oidc.machine.clientSecretName }}
   providerConfigRef:
     name: {{ $oidc.zitadelProviderConfigRef.name }}
     kind: {{ $oidc.zitadelProviderConfigRef.kind }}

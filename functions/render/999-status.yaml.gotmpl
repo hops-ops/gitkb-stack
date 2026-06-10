@@ -32,15 +32,25 @@ status:
       rendered: {{ $s.auth.oidcClient.rendered }}
       issuer: {{ $s.auth.oidcClient.issuer | quote }}
       projectId: {{ $s.auth.oidcClient.projectId | quote }}
-      clientId: {{ $s.auth.oidcClient.clientId | quote }}
-      clientSecretRef:
-        name: {{ $s.auth.oidcClient.clientSecretRef.name | quote }}
-        namespace: {{ $s.auth.oidcClient.clientSecretRef.namespace | quote }}
-        clientIdKey: {{ $s.auth.oidcClient.clientSecretRef.clientIdKey | quote }}
-        clientSecretKey: {{ $s.auth.oidcClient.clientSecretRef.clientSecretKey | quote }}
+      device:
+        applicationId: {{ $s.auth.oidcClient.device.applicationId | quote }}
+        clientSecretRef:
+          name: {{ $s.auth.oidcClient.device.clientSecretRef.name | quote }}
+          namespace: {{ $s.auth.oidcClient.device.clientSecretRef.namespace | quote }}
+          clientIdKey: {{ $s.auth.oidcClient.device.clientSecretRef.clientIdKey | quote }}
+          clientSecretKey: {{ $s.auth.oidcClient.device.clientSecretRef.clientSecretKey | quote }}
+        ready: {{ $s.auth.oidcClient.device.ready }}
+      machine:
+        clientId: {{ $s.auth.oidcClient.machine.clientId | quote }}
+        userId: {{ $s.auth.oidcClient.machine.userId | quote }}
+        clientSecretRef:
+          name: {{ $s.auth.oidcClient.machine.clientSecretRef.name | quote }}
+          namespace: {{ $s.auth.oidcClient.machine.clientSecretRef.namespace | quote }}
+          clientIdKey: {{ $s.auth.oidcClient.machine.clientSecretRef.clientIdKey | quote }}
+          clientSecretKey: {{ $s.auth.oidcClient.machine.clientSecretRef.clientSecretKey | quote }}
+        ready: {{ $s.auth.oidcClient.machine.ready }}
       projectReady: {{ $s.auth.oidcClient.projectReady }}
       roleReady: {{ $s.auth.oidcClient.roleReady }}
-      machineUserReady: {{ $s.auth.oidcClient.machineUserReady }}
       grantReady: {{ $s.auth.oidcClient.grantReady }}
     istioJwt:
       enabled: {{ $s.auth.istioJwt.enabled }}

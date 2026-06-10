@@ -236,9 +236,55 @@ spec:
                             - ClusterIssuer
                             default: ClusterIssuer
               auth:
-                description: Optional authentication and mesh-policy resources. GitKB CLI token acquisition is not configured by these fields.
+                description: Optional authentication and mesh-policy resources for GitKB sync traffic.
                 type: object
                 properties:
+                  oidcClient:
+                    description: |
+                      Dedicated Zitadel client-credentials identity for GitKB
+                      CLI sync. When enabled, the composition creates its own
+                      Zitadel Project, Role, MachineUser, and Grant. The
+                      MachineUser connection Secret contains
+                      `attribute.client_id` and `attribute.client_secret`;
+                      use those values for GitKB CLI OAuth2
+                      client_credentials authentication.
+                    type: object
+                    properties:
+                      enabled:
+                        description: Render the GitKB-owned Zitadel client identity.
+                        type: boolean
+                        default: false
+                      issuer:
+                        description: Expected OAuth/OIDC issuer, for example https://auth.ops.com.ai.
+                        type: string
+                      jwksUri:
+                        description: JWKS URI for the issuer. If omitted, Istio may use OIDC discovery.
+                        type: string
+                      zitadelProviderConfigRef:
+                        description: Zitadel ProviderConfig used to provision the Project, Role, MachineUser, and Grant.
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          kind:
+                            type: string
+                            default: ProviderConfig
+                      zitadelOrgId:
+                        description: Zitadel Org ID that owns the GitKB Project and MachineUser.
+                        type: string
+                      projectName:
+                        description: Zitadel Project name. Defaults to <releaseName>-gitkb.
+                        type: string
+                      roleKey:
+                        description: Zitadel Role key granted to the GitKB MachineUser.
+                        type: string
+                        default: gitkb:sync
+                      machineUserName:
+                        description: MachineUser username. This becomes the OAuth2 client_id. Defaults to <releaseName>-sync.
+                        type: string
+                      clientSecretName:
+                        description: Connection Secret name for client credentials. Defaults to <machineUserName>-secret.
+                        type: string
                   istioJwt:
                     description: Istio ambient waypoint JWT enforcement for the GitKB Service. Requires an Istio ambient mesh and a valid issuer/JWKS configuration.
                     type: object
@@ -258,6 +304,10 @@ spec:
                         type: array
                         items:
                           type: string
+                      useOidcClientAudience:
+                        description: Add the GitKB-owned Zitadel Project ID to accepted audiences once observed. Has no effect unless auth.oidcClient.enabled is true. Defaults to true.
+                        type: boolean
+                        default: true
                       requestPrincipals:
                         description: Request principals allowed by the AuthorizationPolicy. Defaults to ["*"] to require any valid JWT.
                         type: array
@@ -330,6 +380,41 @@ spec:
               auth:
                 type: object
                 properties:
+                  oidcClient:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                      rendered:
+                        type: boolean
+                      issuer:
+                        type: string
+                      projectId:
+                        description: Observed Zitadel Project ID. Use as the audience scope with urn:zitadel:iam:org:project:id:<projectId>:aud.
+                        type: string
+                      clientId:
+                        description: Observed OAuth2 client_id for GitKB CLI client_credentials authentication.
+                        type: string
+                      clientSecretRef:
+                        description: Secret containing the GitKB OAuth2 client credentials.
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                          clientIdKey:
+                            type: string
+                          clientSecretKey:
+                            type: string
+                      projectReady:
+                        type: boolean
+                      roleReady:
+                        type: boolean
+                      machineUserReady:
+                        type: boolean
+                      grantReady:
+                        type: boolean
                   istioJwt:
                     type: object
                     properties:
@@ -339,6 +424,10 @@ spec:
                         type: boolean
                       issuer:
                         type: string
+                      audiences:
+                        type: array
+                        items:
+                          type: string
                       waypointReady:
                         type: boolean
                       requestAuthenticationReady:

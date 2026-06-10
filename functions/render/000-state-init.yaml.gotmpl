@@ -82,12 +82,31 @@
 {{- $certIssuerRef := $cert.issuerRef | default dict }}
 
 {{- $auth := $spec.auth | default dict }}
+{{- $oidcClient := $auth.oidcClient | default dict }}
+{{- $oidcClientEnabled := false }}
+{{- if hasKey $oidcClient "enabled" }}{{- $oidcClientEnabled = $oidcClient.enabled }}{{- end }}
+{{- $oidcProviderConfigRef := $oidcClient.zitadelProviderConfigRef | default dict }}
+{{- $oidcProviderConfigRef = dict
+  "name" ($oidcProviderConfigRef.name | default "")
+  "kind" ($oidcProviderConfigRef.kind | default "ProviderConfig")
+}}
+{{- $oidcOrgId := $oidcClient.zitadelOrgId | default "" }}
+{{- $oidcMachineUserName := $oidcClient.machineUserName | default (printf "%s-sync" $releaseName) }}
+{{- $oidcClientSecretName := $oidcClient.clientSecretName | default (printf "%s-secret" $oidcMachineUserName) }}
+{{- $oidcClientRendered := false }}
+{{- if and $oidcClientEnabled $oidcProviderConfigRef.name $oidcOrgId }}
+  {{- $oidcClientRendered = true }}
+{{- end }}
+
 {{- $istioJwt := $auth.istioJwt | default dict }}
 {{- $istioJwtEnabled := false }}
 {{- if hasKey $istioJwt "enabled" }}{{- $istioJwtEnabled = $istioJwt.enabled }}{{- end }}
 {{- $waypoint := $istioJwt.waypoint | default dict }}
 {{- $waypointName := $waypoint.name | default (printf "%s-waypoint" $releaseName) }}
-{{- $istioJwtIssuer := $istioJwt.issuer | default "" }}
+{{- $istioJwtIssuer := $istioJwt.issuer | default ($oidcClient.issuer | default "") }}
+{{- $istioJwtJwksUri := $istioJwt.jwksUri | default ($oidcClient.jwksUri | default "") }}
+{{- $istioJwtUseOidcClientAudience := true }}
+{{- if hasKey $istioJwt "useOidcClientAudience" }}{{- $istioJwtUseOidcClientAudience = $istioJwt.useOidcClientAudience }}{{- end }}
 {{- $istioJwtRendered := false }}
 {{- if and $istioJwtEnabled $istioJwtIssuer }}
   {{- $istioJwtRendered = true }}
@@ -173,12 +192,28 @@
     )
   )
   "auth" (dict
+    "oidcClient" (dict
+      "enabled" $oidcClientEnabled
+      "rendered" $oidcClientRendered
+      "issuer" ($oidcClient.issuer | default "")
+      "jwksUri" ($oidcClient.jwksUri | default "")
+      "zitadelProviderConfigRef" $oidcProviderConfigRef
+      "zitadelOrgId" $oidcOrgId
+      "projectName" ($oidcClient.projectName | default (printf "%s-gitkb" $releaseName))
+      "roleKey" ($oidcClient.roleKey | default "gitkb:sync")
+      "machineUserName" $oidcMachineUserName
+      "clientSecretName" $oidcClientSecretName
+      "clientIdKey" "attribute.client_id"
+      "clientSecretKey" "attribute.client_secret"
+    )
     "istioJwt" (dict
       "enabled" $istioJwtEnabled
       "rendered" $istioJwtRendered
       "issuer" $istioJwtIssuer
-      "jwksUri" ($istioJwt.jwksUri | default "")
+      "jwksUri" $istioJwtJwksUri
       "audiences" ($istioJwt.audiences | default (list))
+      "effectiveAudiences" ($istioJwt.audiences | default (list))
+      "useOidcClientAudience" $istioJwtUseOidcClientAudience
       "requestPrincipals" ($istioJwt.requestPrincipals | default (list "*"))
       "waypoint" (dict
         "name" $waypointName

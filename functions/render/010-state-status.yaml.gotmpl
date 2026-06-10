@@ -5,7 +5,7 @@
 {{- $observed := $.observed.resources | default dict }}
 
 {{- $checkReady := dict }}
-{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "auth-waypoint" "auth-requestauthentication" "auth-authorizationpolicy" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" "usage-auth-waypoint-namespace" "usage-auth-jwt-namespace" "usage-auth-policy-namespace" "usage-auth-jwt-gitkb" "usage-auth-policy-gitkb" }}
+{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "auth-zitadel-project" "auth-zitadel-role" "auth-zitadel-machineuser" "auth-zitadel-grant" "auth-waypoint" "auth-requestauthentication" "auth-authorizationpolicy" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" "usage-auth-waypoint-namespace" "usage-auth-jwt-namespace" "usage-auth-policy-namespace" "usage-auth-jwt-gitkb" "usage-auth-policy-gitkb" }}
   {{- $entry := get $observed $key | default dict }}
   {{- $resource := $entry.resource | default dict }}
   {{- $status := $resource.status | default dict }}
@@ -22,7 +22,21 @@
 {{- $routeRendered := and $exp.enabled $exp.domain $exp.gatewayRef.name }}
 {{- $certificateRendered := and $exp.enabled $exp.certificate.enabled $exp.domain }}
 {{- $certificateUsesGitkbNamespace := and $certificateRendered (eq $exp.certificate.secretNamespace $state.namespace) }}
+{{- $oidcClient := $state.auth.oidcClient }}
 {{- $auth := $state.auth.istioJwt }}
+
+{{- $oidcProjectEntry := get $observed "auth-zitadel-project" | default dict }}
+{{- $oidcProjectResource := $oidcProjectEntry.resource | default dict }}
+{{- $oidcProjectStatus := $oidcProjectResource.status | default dict }}
+{{- $oidcProjectAtProvider := $oidcProjectStatus.atProvider | default dict }}
+{{- $oidcProjectId := $oidcProjectAtProvider.id | default "" }}
+
+{{- $oidcMachineUserEntry := get $observed "auth-zitadel-machineuser" | default dict }}
+{{- $oidcMachineUserResource := $oidcMachineUserEntry.resource | default dict }}
+{{- $oidcMachineUserStatus := $oidcMachineUserResource.status | default dict }}
+{{- $oidcMachineUserAtProvider := $oidcMachineUserStatus.atProvider | default dict }}
+{{- $oidcMachineUserId := $oidcMachineUserAtProvider.id | default ($oidcMachineUserAtProvider.userId | default "") }}
+{{- $oidcClientId := $oidcMachineUserAtProvider.userName | default "" }}
 
 {{- $namespaceReady := get $checkReady "namespace" }}
 {{- $releaseReady := get $checkReady "helm-release-gitkb" }}
@@ -38,6 +52,41 @@
   {{- $certificateReady = get $checkReady "exposure-certificate" }}
   {{- $certificateReadyForOverall = $certificateReady }}
 {{- end }}
+
+{{- $oidcProjectReady := false }}
+{{- $oidcRoleReady := false }}
+{{- $oidcMachineUserReady := false }}
+{{- $oidcGrantReady := false }}
+{{- $oidcReadyForOverall := true }}
+{{- if $oidcClient.enabled }}
+  {{- $oidcReadyForOverall = false }}
+  {{- if $oidcClient.rendered }}
+    {{- $oidcProjectReady = get $checkReady "auth-zitadel-project" }}
+    {{- $oidcRoleReady = get $checkReady "auth-zitadel-role" }}
+    {{- $oidcMachineUserReady = get $checkReady "auth-zitadel-machineuser" }}
+    {{- $oidcGrantReady = get $checkReady "auth-zitadel-grant" }}
+    {{- $oidcReadyForOverall = and $oidcProjectReady $oidcRoleReady $oidcMachineUserReady $oidcGrantReady }}
+  {{- end }}
+{{- end }}
+
+{{- $effectiveAudiences := $auth.audiences | default (list) }}
+{{- if and $auth.useOidcClientAudience $oidcClient.rendered $oidcProjectId }}
+  {{- $effectiveAudiences = append $effectiveAudiences $oidcProjectId }}
+{{- end }}
+{{- $authRendered := $auth.rendered }}
+{{- if and $auth.enabled $auth.useOidcClientAudience $oidcClient.rendered (not $oidcProjectId) }}
+  {{- $authRendered = false }}
+{{- end }}
+{{- $namespaceLabels := $state.labels }}
+{{- if $authRendered }}
+  {{- $namespaceLabels = mergeOverwrite (dict) $state.labels (dict "istio.io/dataplane-mode" "ambient") }}
+{{- end }}
+{{- $state = set $state "namespaceLabels" $namespaceLabels }}
+{{- $state = set $state "auth" (mergeOverwrite $state.auth (dict "istioJwt" (mergeOverwrite $state.auth.istioJwt (dict
+  "rendered" $authRendered
+  "effectiveAudiences" $effectiveAudiences
+)))) }}
+{{- $auth = $state.auth.istioJwt }}
 
 {{- $gitkbNamespaceUsageReady := true }}
 {{- if and $namespaceReady $releaseReady }}
@@ -90,7 +139,7 @@
   {{- end }}
 {{- end }}
 
-{{- $ready := and $namespaceReady $releaseReady $routeReadyForOverall $certificateReadyForOverall $gitkbNamespaceUsageReady $httprouteGitkbUsageReady $httprouteNamespaceUsageReady $certificateNamespaceUsageReady $authReadyForOverall }}
+{{- $ready := and $namespaceReady $releaseReady $routeReadyForOverall $certificateReadyForOverall $gitkbNamespaceUsageReady $httprouteGitkbUsageReady $httprouteNamespaceUsageReady $certificateNamespaceUsageReady $oidcReadyForOverall $authReadyForOverall }}
 
 {{- $exposureURL := "" }}
 {{- if and $exp.enabled $exp.domain }}
@@ -111,6 +160,15 @@
     "certificateUsesGitkbNamespace" $certificateUsesGitkbNamespace
   )
   "auth" (dict
+    "oidcClient" (dict
+      "projectReady" $oidcProjectReady
+      "roleReady" $oidcRoleReady
+      "machineUserReady" $oidcMachineUserReady
+      "grantReady" $oidcGrantReady
+      "projectId" $oidcProjectId
+      "machineUserId" $oidcMachineUserId
+      "clientId" $oidcClientId
+    )
     "waypointReady" $authWaypointReady
     "requestAuthenticationReady" $authRequestAuthenticationReady
     "authorizationPolicyReady" $authAuthorizationPolicyReady
@@ -145,10 +203,28 @@
     "certificateReady" $certificateReady
   )
   "auth" (dict
+    "oidcClient" (dict
+      "enabled" $oidcClient.enabled
+      "rendered" $oidcClient.rendered
+      "issuer" $oidcClient.issuer
+      "projectId" $oidcProjectId
+      "clientId" $oidcClientId
+      "clientSecretRef" (dict
+        "name" $oidcClient.clientSecretName
+        "namespace" $state.xrNamespace
+        "clientIdKey" $oidcClient.clientIdKey
+        "clientSecretKey" $oidcClient.clientSecretKey
+      )
+      "projectReady" $oidcProjectReady
+      "roleReady" $oidcRoleReady
+      "machineUserReady" $oidcMachineUserReady
+      "grantReady" $oidcGrantReady
+    )
     "istioJwt" (dict
       "enabled" $auth.enabled
       "rendered" $auth.rendered
       "issuer" $auth.issuer
+      "audiences" $auth.effectiveAudiences
       "waypointReady" $authWaypointReady
       "requestAuthenticationReady" $authRequestAuthenticationReady
       "authorizationPolicyReady" $authAuthorizationPolicyReady

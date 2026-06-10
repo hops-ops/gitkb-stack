@@ -1,8 +1,8 @@
 # code: language=yaml
 #
 # Optional Istio ambient waypoint JWT enforcement for GitKB sync traffic.
-# This proves and packages the mesh-side auth gate only; GitKB CLI token
-# acquisition/injection remains a separate client-side concern.
+# When auth.oidcClient is enabled, the generated Zitadel Project ID is
+# added to RequestAuthentication audiences after it is observed.
 
 {{- $auth := $state.auth.istioJwt }}
 {{- $observedAuth := $state.observed.auth | default dict }}
@@ -69,9 +69,9 @@ spec:
           {{- if $auth.jwksUri }}
           jwksUri: {{ $auth.jwksUri | quote }}
           {{- end }}
-          {{- if $auth.audiences }}
+          {{- if $auth.effectiveAudiences }}
           audiences:
-          {{- range $audience := $auth.audiences }}
+          {{- range $audience := $auth.effectiveAudiences }}
           - {{ $audience | quote }}
           {{- end }}
           {{- end }}

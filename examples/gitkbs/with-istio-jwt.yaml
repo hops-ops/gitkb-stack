@@ -18,9 +18,15 @@ spec:
       namespace: istio-ingress
       sectionName: https
   auth:
-    istioJwt:
+    oidcClient:
       enabled: true
       issuer: https://auth.ops.com.ai
       jwksUri: https://auth.ops.com.ai/oauth/v2/keys
-      audiences:
-        - "373410628280264299"
+      zitadelProviderConfigRef:
+        name: zitadel-tenant-stack
+        kind: ProviderConfig
+      zitadelOrgId: "373268222482392664"
+      projectName: gitkb-sync
+      machineUserName: gitkb-sync
+    istioJwt:
+      enabled: true

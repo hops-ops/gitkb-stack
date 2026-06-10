@@ -185,7 +185,7 @@ items = [
                         enabled = True
                         issuer = "https://auth.ops.com.ai"
                         jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
-                        audiences = ["373410628280264299"]
+                        audiences = ["gitkb-project-audience"]
                     }
                 }
             }
@@ -252,7 +252,7 @@ items = [
                             jwtRules = [{
                                 issuer = "https://auth.ops.com.ai"
                                 jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
-                                audiences = ["373410628280264299"]
+                                audiences = ["gitkb-project-audience"]
                             }]
                         }
                     }
@@ -280,6 +280,203 @@ items = [
                                     source.requestPrincipals = ["*"]
                                 }]
                             }]
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
+        metadata.name = "oidc-client-renders-zitadel-identity"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.auth = {
+                    oidcClient = {
+                        enabled = True
+                        issuer = "https://auth.ops.com.ai"
+                        jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
+                        zitadelProviderConfigRef = {
+                            name = "zitadel-tenant-stack"
+                            kind = "ProviderConfig"
+                        }
+                        zitadelOrgId = "org-123"
+                        projectName = "gitkb-sync"
+                        machineUserName = "gitkb-sync"
+                    }
+                }
+            }
+            assertResources = [
+                {
+                    apiVersion = "project.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Project"
+                    metadata.name = "platform-kb-auth-zitadel-project"
+                    spec.forProvider = {
+                        orgId = "org-123"
+                        name = "gitkb-sync"
+                        hasProjectCheck = False
+                        projectRoleAssertion = True
+                        projectRoleCheck = False
+                    }
+                    spec.providerConfigRef = {
+                        name = "zitadel-tenant-stack"
+                        kind = "ProviderConfig"
+                    }
+                }
+                {
+                    apiVersion = "project.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Role"
+                    metadata.name = "platform-kb-auth-zitadel-role"
+                    spec.forProvider = {
+                        orgId = "org-123"
+                        projectIdRef.name = "platform-kb-auth-zitadel-project"
+                        roleKey = "gitkb:sync"
+                        displayName = "GitKB Sync"
+                        group = "gitkb"
+                    }
+                }
+                {
+                    apiVersion = "user.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "MachineUser"
+                    metadata.name = "platform-kb-auth-zitadel-machineuser"
+                    spec.forProvider = {
+                        orgId = "org-123"
+                        userName = "gitkb-sync"
+                        accessTokenType = "ACCESS_TOKEN_TYPE_JWT"
+                        withSecret = True
+                    }
+                    spec.writeConnectionSecretToRef.name = "gitkb-sync-secret"
+                }
+                {
+                    apiVersion = "hops.ops.com.ai/v1alpha1"
+                    kind = "GitKB"
+                    metadata.name = "platform-kb"
+                    status.auth.oidcClient = {
+                        enabled = True
+                        rendered = True
+                        issuer = "https://auth.ops.com.ai"
+                        clientSecretRef = {
+                            name = "gitkb-sync-secret"
+                            namespace = "default"
+                            clientIdKey = "attribute.client_id"
+                            clientSecretKey = "attribute.client_secret"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
+        metadata.name = "oidc-client-observed-project-becomes-istio-audience"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.auth = {
+                    oidcClient = {
+                        enabled = True
+                        issuer = "https://auth.ops.com.ai"
+                        jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
+                        zitadelProviderConfigRef = {
+                            name = "zitadel-tenant-stack"
+                            kind = "ProviderConfig"
+                        }
+                        zitadelOrgId = "org-123"
+                        projectName = "gitkb-sync"
+                        machineUserName = "gitkb-sync"
+                    }
+                    istioJwt = {
+                        enabled = True
+                    }
+                }
+            }
+            observedResources = [
+                {
+                    apiVersion = "project.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Project"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-project"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-project"}
+                    }
+                    status = {
+                        atProvider.id = "gitkb-project-id"
+                        conditions = _ready_conditions
+                    }
+                }
+                {
+                    apiVersion = "project.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Role"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-role"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-role"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "user.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "MachineUser"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-machineuser"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-machineuser"}
+                    }
+                    status = {
+                        atProvider = {
+                            id = "gitkb-user-id"
+                            userName = "gitkb-sync"
+                        }
+                        conditions = _ready_conditions
+                    }
+                }
+            ]
+            assertResources = [
+                {
+                    apiVersion = "user.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Grant"
+                    metadata.name = "platform-kb-auth-zitadel-grant"
+                    spec.forProvider = {
+                        orgId = "org-123"
+                        projectId = "gitkb-project-id"
+                        userId = "gitkb-user-id"
+                        roleKeys = ["gitkb:sync"]
+                    }
+                }
+                {
+                    apiVersion = "kubernetes.m.crossplane.io/v1alpha1"
+                    kind = "Object"
+                    metadata.name = "platform-kb-auth-requestauthentication"
+                    spec.forProvider.manifest.spec.jwtRules = [{
+                        issuer = "https://auth.ops.com.ai"
+                        jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
+                        audiences = ["gitkb-project-id"]
+                    }]
+                }
+                {
+                    apiVersion = "hops.ops.com.ai/v1alpha1"
+                    kind = "GitKB"
+                    metadata.name = "platform-kb"
+                    status.auth = {
+                        oidcClient = {
+                            enabled = True
+                            rendered = True
+                            projectId = "gitkb-project-id"
+                            clientId = "gitkb-sync"
+                            projectReady = True
+                            roleReady = True
+                            machineUserReady = True
+                            grantReady = False
+                        }
+                        istioJwt = {
+                            enabled = True
+                            rendered = True
+                            issuer = "https://auth.ops.com.ai"
+                            audiences = ["gitkb-project-id"]
                         }
                     }
                 }

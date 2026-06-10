@@ -16,9 +16,13 @@ spec:
     kind: Provider
     package: xpkg.crossplane.io/crossplane-contrib/provider-kubernetes
     version: '>=v1'
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Provider
+    package: xpkg.crossplane.io/crossplane-contrib/provider-upjet-zitadel
+    version: '>=v0.1.1'
   description: GitKB serves a GitKB knowledge base from the gitkb-server chart and
     optionally exposes it through Gateway API with TLS certificate and ExternalDNS
-    wiring.
+    wiring, plus a dedicated Zitadel client for authenticated sync.
   license: Apache-2.0
   maintainer: Patrick Lee Scott <pat@patscott.io>
   readme: |
@@ -29,15 +33,17 @@ spec:
 
     A `GitKB` claim owns namespace creation, chart installation, optional
     Gateway API HTTPRoute exposure, optional cert-manager Certificate
-    provisioning, and ExternalDNS annotations. `spec.exposure.domain` is the
-    public domain, while `spec.gitkb.org` and `spec.gitkb.repo` derive the
-    default public path `/<org>/<repo>`, for example:
+    provisioning, ExternalDNS annotations, and optional Zitadel
+    client-credentials auth. `spec.exposure.domain` is the public domain, while
+    `spec.gitkb.org` and `spec.gitkb.repo` derive the default public path
+    `/<org>/<repo>`, for example:
 
     `https://kb.ops.com.ai/hops-ops/hops`
 
     The HTTPRoute strips that prefix before forwarding traffic to
     `git-kb serve`, so many GitKB repos can share one Gateway domain. This
-    pass is intentionally unauthenticated; add Gateway/OIDC policy before
-    exposing writable GitKB sync traffic beyond trusted networks.
+    For authenticated sync traffic, enable `auth.oidcClient` and
+    `auth.istioJwt` so GitKB gets its own Zitadel MachineUser client and Istio
+    validates that client's project audience.
   repository: ghcr.io/hops-ops/gitkb-stack
   source: github.com/hops-ops/gitkb-stack

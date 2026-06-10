@@ -1,0 +1,99 @@
+# code: language=yaml
+#
+# Dedicated Zitadel client-credentials identity for GitKB sync.
+#
+# The CLI uses OAuth2 client_credentials. In this Zitadel install the
+# working primitive for that flow is a JWT MachineUser with a client secret.
+# The Project ID is also the JWT audience Istio can validate.
+
+{{- $oidc := $state.auth.oidcClient }}
+{{- $observedAuth := $state.observed.auth | default dict }}
+{{- $observedOidc := $observedAuth.oidcClient | default dict }}
+
+{{- if $oidc.rendered }}
+---
+apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: {{ $state.name }}-auth-zitadel-project
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    name: {{ $oidc.projectName | quote }}
+    hasProjectCheck: false
+    projectRoleAssertion: true
+    projectRoleCheck: false
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+---
+apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+kind: Role
+metadata:
+  name: {{ $state.name }}-auth-zitadel-role
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-role" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    projectIdRef:
+      name: {{ $state.name }}-auth-zitadel-project
+    roleKey: {{ $oidc.roleKey | quote }}
+    displayName: GitKB Sync
+    group: gitkb
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+---
+apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+kind: MachineUser
+metadata:
+  name: {{ $state.name }}-auth-zitadel-machineuser
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-machineuser" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    userName: {{ $oidc.machineUserName | quote }}
+    name: GitKB Sync
+    description: ServiceUser for GitKB CLI sync client_credentials access.
+    accessTokenType: ACCESS_TOKEN_TYPE_JWT
+    withSecret: true
+  writeConnectionSecretToRef:
+    name: {{ $oidc.clientSecretName }}
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+
+{{- if and $observedOidc.projectId $observedOidc.machineUserId }}
+---
+apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+kind: Grant
+metadata:
+  name: {{ $state.name }}-auth-zitadel-grant
+  annotations:
+    {{ setResourceNameAnnotation "auth-zitadel-grant" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    orgId: {{ $oidc.zitadelOrgId | quote }}
+    projectId: {{ $observedOidc.projectId | quote }}
+    userId: {{ $observedOidc.machineUserId | quote }}
+    roleKeys:
+    - {{ $oidc.roleKey | quote }}
+  providerConfigRef:
+    name: {{ $oidc.zitadelProviderConfigRef.name }}
+    kind: {{ $oidc.zitadelProviderConfigRef.kind }}
+{{- end }}
+{{- end }}

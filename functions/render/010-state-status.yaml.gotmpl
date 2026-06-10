@@ -5,7 +5,7 @@
 {{- $observed := $.observed.resources | default dict }}
 
 {{- $checkReady := dict }}
-{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "auth-zitadel-project" "auth-zitadel-device-app" "auth-zitadel-role" "auth-zitadel-machineuser" "auth-zitadel-grant" "auth-waypoint" "auth-requestauthentication" "auth-authorizationpolicy" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" "usage-auth-waypoint-namespace" "usage-auth-jwt-namespace" "usage-auth-policy-namespace" "usage-auth-jwt-gitkb" "usage-auth-policy-gitkb" }}
+{{- range $key := list "namespace" "helm-release-gitkb" "exposure-certificate" "exposure-httproute" "auth-zitadel-project" "auth-zitadel-device-app" "auth-zitadel-role" "auth-zitadel-machineuser" "auth-zitadel-grant" "auth-waypoint" "auth-requestauthentication" "auth-authorizationpolicy" "usage-gitkb-namespace" "usage-httproute-gitkb" "usage-httproute-namespace" "usage-certificate-namespace" "usage-auth-device-project" "usage-auth-role-project" "usage-auth-grant-project" "usage-auth-grant-machineuser" "usage-auth-grant-role" "usage-auth-waypoint-namespace" "usage-auth-jwt-namespace" "usage-auth-policy-namespace" "usage-auth-jwt-gitkb" "usage-auth-policy-gitkb" }}
   {{- $entry := get $observed $key | default dict }}
   {{- $resource := $entry.resource | default dict }}
   {{- $status := $resource.status | default dict }}
@@ -65,6 +65,11 @@
 {{- $oidcMachineUserReady := false }}
 {{- $oidcGrantReady := false }}
 {{- $oidcReadyForOverall := true }}
+{{- $oidcDeviceProjectUsageReady := true }}
+{{- $oidcRoleProjectUsageReady := true }}
+{{- $oidcGrantProjectUsageReady := true }}
+{{- $oidcGrantMachineUserUsageReady := true }}
+{{- $oidcGrantRoleUsageReady := true }}
 {{- if $oidcClient.enabled }}
   {{- $oidcReadyForOverall = false }}
   {{- if $oidcClient.rendered }}
@@ -73,7 +78,22 @@
     {{- $oidcRoleReady = get $checkReady "auth-zitadel-role" }}
     {{- $oidcMachineUserReady = get $checkReady "auth-zitadel-machineuser" }}
     {{- $oidcGrantReady = get $checkReady "auth-zitadel-grant" }}
-    {{- $oidcReadyForOverall = and $oidcProjectReady $oidcDeviceReady $oidcRoleReady $oidcMachineUserReady $oidcGrantReady }}
+    {{- if and $oidcProjectReady $oidcDeviceReady }}
+      {{- $oidcDeviceProjectUsageReady = get $checkReady "usage-auth-device-project" }}
+    {{- end }}
+    {{- if and $oidcProjectReady $oidcRoleReady }}
+      {{- $oidcRoleProjectUsageReady = get $checkReady "usage-auth-role-project" }}
+    {{- end }}
+    {{- if and $oidcProjectReady $oidcGrantReady }}
+      {{- $oidcGrantProjectUsageReady = get $checkReady "usage-auth-grant-project" }}
+    {{- end }}
+    {{- if and $oidcMachineUserReady $oidcGrantReady }}
+      {{- $oidcGrantMachineUserUsageReady = get $checkReady "usage-auth-grant-machineuser" }}
+    {{- end }}
+    {{- if and $oidcRoleReady $oidcGrantReady }}
+      {{- $oidcGrantRoleUsageReady = get $checkReady "usage-auth-grant-role" }}
+    {{- end }}
+    {{- $oidcReadyForOverall = and $oidcProjectReady $oidcDeviceReady $oidcRoleReady $oidcMachineUserReady $oidcGrantReady $oidcDeviceProjectUsageReady $oidcRoleProjectUsageReady $oidcGrantProjectUsageReady $oidcGrantMachineUserUsageReady $oidcGrantRoleUsageReady }}
   {{- end }}
 {{- end }}
 
@@ -178,6 +198,11 @@
       "deviceApplicationId" $oidcDeviceApplicationId
       "machineUserId" $oidcMachineUserId
       "machineClientId" $oidcMachineClientId
+      "deviceProjectUsageReady" $oidcDeviceProjectUsageReady
+      "roleProjectUsageReady" $oidcRoleProjectUsageReady
+      "grantProjectUsageReady" $oidcGrantProjectUsageReady
+      "grantMachineUserUsageReady" $oidcGrantMachineUserUsageReady
+      "grantRoleUsageReady" $oidcGrantRoleUsageReady
     )
     "waypointReady" $authWaypointReady
     "requestAuthenticationReady" $authRequestAuthenticationReady

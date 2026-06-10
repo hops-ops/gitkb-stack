@@ -128,4 +128,119 @@ spec:
     name: {{ $oidc.zitadelProviderConfigRef.name }}
     kind: {{ $oidc.zitadelProviderConfigRef.kind }}
 {{- end }}
+
+{{- if and $observedOidc.projectReady $observedOidc.deviceReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-device-before-project
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-device-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Project
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-project
+  by:
+    apiVersion: application.zitadel.m.crossplane.io/v1alpha1
+    kind: Oidc
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-device-app
+{{- end }}
+
+{{- if and $observedOidc.projectReady $observedOidc.roleReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-role-before-project
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-role-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Project
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-project
+  by:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Role
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-role
+{{- end }}
+
+{{- if and $observedOidc.projectReady $observedOidc.grantReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-grant-before-project
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-grant-project" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Project
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-project
+  by:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: Grant
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-grant
+{{- end }}
+
+{{- if and $observedOidc.machineUserReady $observedOidc.grantReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-grant-before-machineuser
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-grant-machineuser" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: MachineUser
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-machineuser
+  by:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: Grant
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-grant
+{{- end }}
+
+{{- if and $observedOidc.roleReady $observedOidc.grantReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-auth-grant-before-role
+  annotations:
+    {{ setResourceNameAnnotation "usage-auth-grant-role" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: project.zitadel.m.crossplane.io/v1alpha1
+    kind: Role
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-role
+  by:
+    apiVersion: user.zitadel.m.crossplane.io/v1alpha1
+    kind: Grant
+    resourceRef:
+      name: {{ $state.name }}-auth-zitadel-grant
+{{- end }}
 {{- end }}

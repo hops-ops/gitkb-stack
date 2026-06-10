@@ -546,6 +546,137 @@ items = [
     }
 
     metav1alpha1.CompositionTest {
+        metadata.name = "observed-oidc-client-ready-renders-deletion-usages"
+        spec = {
+            compositionPath = "apis/gitkbs/composition.yaml"
+            xrdPath = "apis/gitkbs/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = _base_xr | {
+                spec.auth = {
+                    oidcClient = {
+                        enabled = True
+                        issuer = "https://auth.ops.com.ai"
+                        jwksUri = "https://auth.ops.com.ai/oauth/v2/keys"
+                        zitadelProviderConfigRef = {
+                            name = "zitadel-tenant-stack"
+                            kind = "ProviderConfig"
+                        }
+                        zitadelOrgId = "org-123"
+                        projectName = "gitkb"
+                        device = {
+                            applicationName = "gitkb-cli"
+                        }
+                        machine = {
+                            userName = "gitkb-sync"
+                        }
+                    }
+                }
+            }
+            observedResources = [
+                {
+                    apiVersion = "project.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Project"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-project"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-project"}
+                    }
+                    status = {
+                        atProvider.id = "gitkb-project-id"
+                        conditions = _ready_conditions
+                    }
+                }
+                {
+                    apiVersion = "project.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Role"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-role"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-role"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+                {
+                    apiVersion = "application.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Oidc"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-device-app"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-device-app"}
+                    }
+                    status = {
+                        atProvider.id = "gitkb-cli-app-id"
+                        conditions = _ready_conditions
+                    }
+                }
+                {
+                    apiVersion = "user.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "MachineUser"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-machineuser"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-machineuser"}
+                    }
+                    status = {
+                        atProvider = {
+                            id = "gitkb-user-id"
+                            userName = "gitkb-sync"
+                        }
+                        conditions = _ready_conditions
+                    }
+                }
+                {
+                    apiVersion = "user.zitadel.m.crossplane.io/v1alpha1"
+                    kind = "Grant"
+                    metadata = {
+                        name = "platform-kb-auth-zitadel-grant"
+                        annotations = {"crossplane.io/composition-resource-name" = "auth-zitadel-grant"}
+                    }
+                    status.conditions = _ready_conditions
+                }
+            ]
+            assertResources = [
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-device-before-project"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-role-before-project"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-grant-before-project"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-grant-before-machineuser"
+                }
+                {
+                    apiVersion = "protection.crossplane.io/v1beta1"
+                    kind = "Usage"
+                    metadata.name = "platform-kb-delete-auth-grant-before-role"
+                }
+                {
+                    apiVersion = "hops.ops.com.ai/v1alpha1"
+                    kind = "GitKB"
+                    metadata.name = "platform-kb"
+                    status.auth.oidcClient = {
+                        enabled = True
+                        rendered = True
+                        projectReady = True
+                        device.ready = True
+                        roleReady = True
+                        machine.ready = True
+                        grantReady = True
+                    }
+                }
+            ]
+        }
+    }
+
+    metav1alpha1.CompositionTest {
         metadata.name = "observed-auth-ready-renders-usages-and-ready-status"
         spec = {
             compositionPath = "apis/gitkbs/composition.yaml"

@@ -212,10 +212,8 @@ items = [
                     kind = "Object"
                     metadata = {
                         name = "platform-kb-namespace"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "namespace"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "namespace"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "namespace"}
                     }
                     status.conditions = _ready_conditions
                 }
@@ -224,10 +222,8 @@ items = [
                     kind = "Release"
                     metadata = {
                         name = "platform-kb"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "helm-release-gitkb"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "helm-release-gitkb"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "helm-release-gitkb"}
                     }
                     status.conditions = _ready_conditions
                 }
@@ -236,10 +232,8 @@ items = [
                     kind = "Object"
                     metadata = {
                         name = "platform-kb-exposure-httproute"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "exposure-httproute"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "exposure-httproute"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "exposure-httproute"}
                     }
                     status.conditions = _ready_conditions
                 }
@@ -248,10 +242,8 @@ items = [
                     kind = "Object"
                     metadata = {
                         name = "platform-kb-exposure-certificate"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "exposure-certificate"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "exposure-certificate"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "exposure-certificate"}
                     }
                     status.conditions = _ready_conditions
                 }
@@ -260,10 +252,8 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-gitkb-before-namespace"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "usage-gitkb-namespace"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "usage-gitkb-namespace"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-gitkb-namespace"}
                     }
                     status.conditions = _ready_conditions
                 }
@@ -272,10 +262,8 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-httproute-before-gitkb"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "usage-httproute-gitkb"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "usage-httproute-gitkb"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-httproute-gitkb"}
                     }
                     status.conditions = _ready_conditions
                 }
@@ -284,10 +272,8 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-httproute-before-namespace"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "usage-httproute-namespace"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "usage-httproute-namespace"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-httproute-namespace"}
                     }
                     status.conditions = _ready_conditions
                 }
@@ -296,10 +282,8 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-certificate-before-namespace"
-                        annotations = {
-                            "crossplane.io/composition-resource-name" = "usage-certificate-namespace"
-                            "gotemplating.fn.crossplane.io/composition-resource-name" = "usage-certificate-namespace"
-                        }
+                        namespace = "default"
+                        annotations = {"crossplane.io/composition-resource-name" = "usage-certificate-namespace"}
                     }
                     status.conditions = _ready_conditions
                 }

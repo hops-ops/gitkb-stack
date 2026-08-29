@@ -7,15 +7,15 @@ spec:
   - apiVersion: pkg.crossplane.io/v1
     kind: Function
     package: xpkg.crossplane.io/crossplane-contrib/function-auto-ready
-    version: '>=v0'
+    version: '>=v0 <v1'
   - apiVersion: pkg.crossplane.io/v1
     kind: Provider
     package: xpkg.crossplane.io/crossplane-contrib/provider-helm
-    version: '>=v1'
+    version: '>=v1 <v2'
   - apiVersion: pkg.crossplane.io/v1
     kind: Provider
     package: xpkg.crossplane.io/crossplane-contrib/provider-kubernetes
-    version: '>=v1'
+    version: '>=v1 <v2'
   description: GitKB serves a GitKB knowledge base from the gitkb-server chart and
     optionally exposes it through Gateway API with TLS certificate and ExternalDNS
     wiring.

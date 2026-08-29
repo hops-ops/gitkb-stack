@@ -45,12 +45,14 @@ items = [
                         chart = {
                             name = "gitkb-server"
                             repository = "https://hops-ops.github.io/gitkb-server-chart"
+                            # renovate: datasource=github-releases depName=hops-ops/gitkb-server-chart
                             version = "0.1.0"
                         }
                         namespace = "gitkb"
                         values = {
                             fullnameOverride = "platform-kb-gitkb-server"
                             image.repository = "ghcr.io/hops-ops/gitkb-server"
+                            # renovate: datasource=github-releases depName=hops-ops/gitkb-server
                             image.tag = "v0.1.0"
                             gitkb.org = "hops-ops"
                             persistence.enabled = True

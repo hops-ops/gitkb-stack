@@ -13,6 +13,7 @@
 {{- $clusterName := $spec.clusterName | default $name }}
 {{- $namespace := $spec.namespace | default "gitkb" }}
 {{- $releaseName := $spec.releaseName | default $name }}
+# renovate: datasource=github-releases depName=hops-ops/gitkb-server-chart
 {{- $chartVersion := $spec.chartVersion | default "0.1.0" }}
 {{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
 
@@ -38,6 +39,8 @@
 {{- $gitkbOrg := $gitkb.org | default "hops-ops" }}
 {{- $gitkbRepo := $gitkb.repo | default $name }}
 {{- $image := $spec.image | default dict }}
+# renovate: datasource=github-releases depName=hops-ops/gitkb-server
+{{- $imageTag := $image.tag | default "v0.1.0" }}
 {{- $server := $spec.server | default dict }}
 {{- $persistence := $spec.persistence | default dict }}
 {{- $seed := $spec.seed | default dict }}
@@ -105,7 +108,7 @@
   )
   "image" (dict
     "repository" ($image.repository | default "ghcr.io/hops-ops/gitkb-server")
-    "tag" ($image.tag | default "v0.1.0")
+    "tag" $imageTag
     "pullPolicy" ($image.pullPolicy | default "IfNotPresent")
   )
   "server" (dict

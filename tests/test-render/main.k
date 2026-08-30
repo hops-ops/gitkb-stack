@@ -45,12 +45,14 @@ items = [
                         chart = {
                             name = "gitkb-server"
                             repository = "https://hops-ops.github.io/gitkb-server-chart"
+                            # renovate: datasource=github-releases depName=hops-ops/gitkb-server-chart
                             version = "0.1.0"
                         }
                         namespace = "gitkb"
                         values = {
                             fullnameOverride = "platform-kb-gitkb-server"
                             image.repository = "ghcr.io/hops-ops/gitkb-server"
+                            # renovate: datasource=github-releases depName=hops-ops/gitkb-server
                             image.tag = "v0.1.0"
                             gitkb.org = "hops-ops"
                             persistence.enabled = True
@@ -210,6 +212,7 @@ items = [
                     kind = "Object"
                     metadata = {
                         name = "platform-kb-namespace"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "namespace"}
                     }
                     status.conditions = _ready_conditions
@@ -219,6 +222,7 @@ items = [
                     kind = "Release"
                     metadata = {
                         name = "platform-kb"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "helm-release-gitkb"}
                     }
                     status.conditions = _ready_conditions
@@ -228,6 +232,7 @@ items = [
                     kind = "Object"
                     metadata = {
                         name = "platform-kb-exposure-httproute"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "exposure-httproute"}
                     }
                     status.conditions = _ready_conditions
@@ -237,6 +242,7 @@ items = [
                     kind = "Object"
                     metadata = {
                         name = "platform-kb-exposure-certificate"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "exposure-certificate"}
                     }
                     status.conditions = _ready_conditions
@@ -246,6 +252,7 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-gitkb-before-namespace"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "usage-gitkb-namespace"}
                     }
                     status.conditions = _ready_conditions
@@ -255,6 +262,7 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-httproute-before-gitkb"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "usage-httproute-gitkb"}
                     }
                     status.conditions = _ready_conditions
@@ -264,6 +272,7 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-httproute-before-namespace"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "usage-httproute-namespace"}
                     }
                     status.conditions = _ready_conditions
@@ -273,6 +282,7 @@ items = [
                     kind = "Usage"
                     metadata = {
                         name = "platform-kb-delete-certificate-before-namespace"
+                        namespace = "default"
                         annotations = {"crossplane.io/composition-resource-name" = "usage-certificate-namespace"}
                     }
                     status.conditions = _ready_conditions

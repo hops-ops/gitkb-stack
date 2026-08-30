@@ -97,6 +97,7 @@ spec:
                     default: ghcr.io/hops-ops/gitkb-server
                   tag:
                     type: string
+                    # renovate: datasource=github-releases depName=hops-ops/gitkb-server
                     default: v0.1.0
                   pullPolicy:
                     type: string

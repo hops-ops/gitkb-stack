@@ -136,8 +136,8 @@ items = [
                             name = "platform-kb"
                             namespace = "gitkb"
                             annotations = {
-                                "external-dns.alpha.kubernetes.io/hostname" = "kb.ops.com.ai"
-                                "external-dns.alpha.kubernetes.io/ttl" = "300"
+                                "external-dns.kubernetes.io/hostname" = "kb.ops.com.ai"
+                                "external-dns.kubernetes.io/ttl" = "300"
                             }
                         }
                         spec = {
